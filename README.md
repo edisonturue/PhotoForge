@@ -11,7 +11,7 @@
 
 我已经把应用打包好了，就在你的桌面上：
 
-> **`/Users/edisonturue/Desktop/PhotoForge.app`**
+> **`PhotoForge.app`**（在你的桌面上）
 
 **直接双击它就能打开！** 跟打开微信、QQ 一样。
 
