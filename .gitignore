@@ -1,0 +1,60 @@
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Build output
+dist/
+release/
+bundle.js
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project temp / generated assets
+tmp-*/
+tmp-*.png
+tmp-*.svg
+gen_lens_*
+gen_icon_*
+generate-*.js
+generate_*.svg
+icon_gen.mjs
+ref_*.png
+icon.png
+icon_lens_final.png
+icon_lens_final.svg
+icon_ref.png
+icon_ref.svg
+
+# Screenshots / design references
+ui-references/
+ui_references/
+tmp-ui-baseline/
+
+# Docs (auto-generated or external references)
+docs/
+deep-think-skill/
+
+# Local CI / deploy scripts
+deploy.sh
+
+# Codex agent workspace
+.codex/
+.codex-artifacts/
+
+# Backup files
+*.bak
+*.bak2
+
+# Test / temp assets
+assets/test_lens.png
+assets/icon.icns.bak
+assets/icon.png.bak
