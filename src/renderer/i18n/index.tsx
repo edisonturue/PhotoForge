@@ -215,7 +215,6 @@ const translations: Record<Lang, Record<string, string>> = {
     // Undo/Redo
     'toolbar.undo': '撤销',
     'toolbar.redo': '重做',
-    'toolbar.statistics': '统计',
     // Toast
     'toast.importComplete': '照片导入完成',
     'toast.importFailed': '导入失败',
@@ -250,7 +249,6 @@ const translations: Record<Lang, Record<string, string>> = {
     'presets.addFavorite': '添加收藏',
     'presets.removeFavorite': '取消收藏',
     // Toolbar
-    'toolbar.smartAlbums': '智能相册',
     'toolbar.dateGroup': '日期分组',
     // Smart Albums
     'smartAlbum.title': '智能相册',
@@ -635,7 +633,6 @@ const translations: Record<Lang, Record<string, string>> = {
     // Undo/Redo
     'toolbar.undo': 'Undo',
     'toolbar.redo': 'Redo',
-    'toolbar.statistics': 'Statistics',
     // Toast
     'toast.importComplete': 'Photos imported successfully',
     'toast.importFailed': 'Import failed',
@@ -670,7 +667,6 @@ const translations: Record<Lang, Record<string, string>> = {
     'presets.addFavorite': 'Add to favorites',
     'presets.removeFavorite': 'Remove from favorites',
     // Toolbar
-    'toolbar.smartAlbums': 'Smart Albums',
     'toolbar.dateGroup': 'Date Group',
     // Smart Albums
     'smartAlbum.title': 'Smart Albums',
