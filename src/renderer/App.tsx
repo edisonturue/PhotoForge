@@ -152,7 +152,7 @@ function injectGlobalChrome(theme: Theme) {
     input[type="range"]::-webkit-slider-runnable-track {
       height: 6px;
       border-radius: 999px;
-      background: ${theme.bgTertiary};
+      background: ${theme.bgSecondary};
       border: 1px solid ${theme.borderLight};
     }
     input[type="range"]::-webkit-slider-thumb {
@@ -313,7 +313,12 @@ export const App: React.FC = () => {
         case 'rating': aVal = a.rating; bVal = b.rating; break;
         default: aVal = a.dateModified; bVal = b.dateModified;
       }
-      return aVal < bVal ? (sort.order === 'asc' ? -1 : 1) : aVal > bVal ? (sort.order === 'asc' ? 1 : -1) : 0;
+      // Primary sort direction
+      if (aVal < bVal) return sort.order === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sort.order === 'asc' ? 1 : -1;
+      // Tiebreaker: secondary sort by fileName asc for deterministic order
+      const aName = a.fileName.toLowerCase(), bName = b.fileName.toLowerCase();
+      return aName < bName ? -1 : aName > bName ? 1 : 0;
     });
     return result;
   }, [photos, filter, sort, searchQuery]);
@@ -383,16 +388,16 @@ export const App: React.FC = () => {
     // Determine action type for history description
     let action = 'updatePhoto' as any;
     let desc = '';
-    if ('rating' in updates) { action = 'setRating'; desc = `${lang === 'zh-CN' ? '评分' : 'Rating'} ${updates.rating ?? 0} · ${photo.fileName}`; }
-    else if ('colorLabel' in updates) { action = 'setColorLabel'; desc = `${lang === 'zh-CN' ? '标签' : 'Label'} ${updates.colorLabel} · ${photo.fileName}`; }
-    else if ('tags' in updates) { action = updates.tags && updates.tags.length > (photo.tags?.length || 0) ? 'addTag' : 'removeTag'; desc = `${lang === 'zh-CN' ? '标签' : 'Tags'} · ${photo.fileName}`; }
-    else if ('customAdjustments' in updates) { action = 'updatePhoto'; desc = `${lang === 'zh-CN' ? '调整' : 'Adjustments'} · ${photo.fileName}`; }
-    else if ('cropRegion' in updates) { action = 'cropPhoto'; desc = `${lang === 'zh-CN' ? '裁切' : 'Crop'} · ${photo.fileName}`; }
-    else if ('rotation' in updates || 'flipH' in updates || 'flipV' in updates) { action = 'transformPhoto'; desc = `${lang === 'zh-CN' ? '变换' : 'Transform'} · ${photo.fileName}`; }
-    else if ('title' in updates || 'description' in updates) { action = 'updatePhoto'; desc = `${lang === 'zh-CN' ? '元数据' : 'Metadata'} · ${photo.fileName}`; }
-    else if ('dateTaken' in updates) { action = 'updatePhoto'; desc = `${lang === 'zh-CN' ? '日期' : 'Date'} · ${photo.fileName}`; }
-    else if ('latitude' in updates || 'longitude' in updates) { action = 'updatePhoto'; desc = `${lang === 'zh-CN' ? '位置' : 'Location'} · ${photo.fileName}`; }
-    else { action = 'updatePhoto'; desc = `${lang === 'zh-CN' ? '编辑' : 'Edit'} · ${photo.fileName}`; }
+    if ('rating' in updates) { action = 'setRating'; desc = `${t('history.rating')} ${updates.rating ?? 0} · ${photo.fileName}`; }
+    else if ('colorLabel' in updates) { action = 'setColorLabel'; desc = `${t('history.label')} ${updates.colorLabel} · ${photo.fileName}`; }
+    else if ('tags' in updates) { action = updates.tags && updates.tags.length > (photo.tags?.length || 0) ? 'addTag' : 'removeTag'; desc = `${t('history.tags')} · ${photo.fileName}`; }
+    else if ('customAdjustments' in updates) { action = 'updatePhoto'; desc = `${t('history.adjustments')} · ${photo.fileName}`; }
+    else if ('cropRegion' in updates) { action = 'cropPhoto'; desc = `${t('history.crop')} · ${photo.fileName}`; }
+    else if ('rotation' in updates || 'flipH' in updates || 'flipV' in updates) { action = 'transformPhoto'; desc = `${t('history.transform')} · ${photo.fileName}`; }
+    else if ('title' in updates || 'description' in updates) { action = 'updatePhoto'; desc = `${t('history.metadata')} · ${photo.fileName}`; }
+    else if ('dateTaken' in updates) { action = 'updatePhoto'; desc = `${t('history.date')} · ${photo.fileName}`; }
+    else if ('latitude' in updates || 'longitude' in updates) { action = 'updatePhoto'; desc = `${t('history.location')} · ${photo.fileName}`; }
+    else { action = 'updatePhoto'; desc = `${t('history.edit')} · ${photo.fileName}`; }
 
     const entry = createUpdateEntry(action, desc, id, before as any, updates as any);
     await updatePhoto(id, updates);
@@ -403,11 +408,19 @@ export const App: React.FC = () => {
     const photo = photos.find(p => p.id === id);
     if (!photo) return;
     const newFav = !photo.isFavorite;
-    const entry = createUpdateEntry('toggleFavorite', `${newFav ? (lang === 'zh-CN' ? '已收藏' : 'Favorited') : (lang === 'zh-CN' ? '取消收藏' : 'Unfavorited')} · ${photo.fileName}`, id, { isFavorite: photo.isFavorite }, { isFavorite: newFav });
+    const entry = createUpdateEntry('toggleFavorite', `${newFav ? t('history.favorited') : t('history.unfavorited')} · ${photo.fileName}`, id, { isFavorite: photo.isFavorite }, { isFavorite: newFav });
     await updatePhoto(id, { isFavorite: newFav });
     history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState);
     addToast('success', newFav ? t('toast.addedFavorite') : t('toast.removedFavorite'), 2000);
   }, [photos, updatePhoto, history, addToast, t]);
+
+  const handleSetRating = useCallback(async (id: string, rating: 0 | 1 | 2 | 3 | 4 | 5) => {
+    const photo = photos.find(p => p.id === id);
+    if (!photo) return;
+    const entry = createUpdateEntry('setRating', `${t('history.rating')} ${rating} · ${photo.fileName}`, id, { rating: photo.rating }, { rating });
+    await updatePhoto(id, { rating });
+    history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState);
+  }, [photos, updatePhoto, history]);
 
   const handleApplyPreset = useCallback(async (photoId: string, presetId: string) => {
     const photo = photos.find(p => p.id === photoId);
@@ -424,7 +437,7 @@ export const App: React.FC = () => {
     const photo = photos.find(p => p.id === photoId);
     if (!photo || !photo.presetApplied) return;
     const preset = presets.find(p => p.id === photo.presetApplied);
-    const entry = createUpdateEntry('removePreset', `${lang === 'zh-CN' ? '移除预设' : 'Remove preset'} · ${preset?.name || 'Preset'} -> ${photo.fileName}`, photoId, { presetApplied: photo.presetApplied, customAdjustments: photo.customAdjustments }, { presetApplied: null, customAdjustments: null });
+    const entry = createUpdateEntry('removePreset', `${t('history.removePreset')} · ${preset?.name || 'Preset'} -> ${photo.fileName}`, photoId, { presetApplied: photo.presetApplied, customAdjustments: photo.customAdjustments }, { presetApplied: null, customAdjustments: null });
     await removePreset(photoId);
     history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState);
     refreshPhotos();
@@ -436,7 +449,7 @@ export const App: React.FC = () => {
     const preset = presets.find(p => p.id === presetId);
     if (!preset) return;
     const changes = ids.map(id => { const p = photos.find(ph => ph.id === id); return { id, before: { presetApplied: p?.presetApplied || null }, after: { presetApplied: presetId } }; });
-    const entry = createBatchEntry('batchApplyPreset', `${preset.name} -> ${ids.length} ${lang === 'zh-CN' ? '张照片' : 'photos'}`, changes);
+    const entry = createBatchEntry('batchApplyPreset', `${preset.name} -> ${ids.length} ${t('history.photos')}`, changes);
     for (const id of ids) await applyPreset(id, presetId);
     history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState);
     refreshPhotos();
@@ -455,7 +468,7 @@ export const App: React.FC = () => {
     try {
       await deletePhotos(ids);
       // Record deletion in history for undo
-      const entry = createBatchEntry('deletePhotos', `${lang === 'zh-CN' ? '删除' : 'Delete'} ${ids.length} ${lang === 'zh-CN' ? '张照片' : 'photos'}`, deletedPhotos.map(p => ({
+      const entry = createBatchEntry('deletePhotos', `${t('history.delete')} ${ids.length} ${t('history.photos')}`, deletedPhotos.map(p => ({
         id: p.id,
         before: { ...p } as any,
         after: {} as any,
@@ -483,7 +496,7 @@ export const App: React.FC = () => {
       }
       refreshPhotos();
     }
-    addToast('info', `${lang === 'zh-CN' ? '撤销' : 'Undo'} · ${entry.description}`, 2000);
+    addToast('info', `${t('history.undo')} · ${entry.description}`, 2000);
   }, [history, refreshPhotos, addToast, lang]);
 
   const handleRedo = useCallback(async () => {
@@ -500,7 +513,7 @@ export const App: React.FC = () => {
       }
     }
     refreshPhotos();
-    addToast('info', `${lang === 'zh-CN' ? '重做' : 'Redo'} · ${entry.description}`, 2000);
+    addToast('info', `${t('history.redo')} · ${entry.description}`, 2000);
   }, [history, deletePhotos, refreshPhotos, addToast, lang]);
 
   // ========== Missing File Repair ==========
@@ -568,7 +581,7 @@ export const App: React.FC = () => {
       const photo = photos.find(p => p.id === id);
       if (!photo) continue;
       const newFav = !photo.isFavorite;
-      const entry = createUpdateEntry('toggleFavorite', `${newFav ? (lang === 'zh-CN' ? '已收藏' : 'Favorited') : (lang === 'zh-CN' ? '取消收藏' : 'Unfavorited')} · ${photo.fileName}`, id, { isFavorite: photo.isFavorite }, { isFavorite: newFav });
+      const entry = createUpdateEntry('toggleFavorite', `${newFav ? t('history.favorited') : t('history.unfavorited')} · ${photo.fileName}`, id, { isFavorite: photo.isFavorite }, { isFavorite: newFav });
       await updatePhoto(id, { isFavorite: newFav });
       history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState);
     }
@@ -643,7 +656,7 @@ export const App: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: `0 ${SPACING.md}px 0 ${SPACING.sm}px`,
+        padding: `0 ${SPACING.md}px`,
         background: theme.bgPhotoStage,
         ...dragRegionStyle,
         boxShadow: 'none',
@@ -777,6 +790,7 @@ export const App: React.FC = () => {
               onToggleFavorite={handleToggleFavorite}
               onDelete={(ids) => { setSelectedIds(new Set(ids)); handleDeleteSelected(); }}
               onCompare={selectedIds.size >= 2 ? () => navTo('compare') : undefined}
+              onSetRating={handleSetRating}
               theme={theme}
               thumbnailSize={settings.thumbnailSize}
               showFileExtensions={settings.showFileExtensions}
@@ -960,7 +974,7 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', height: 58, padding: `0 ${SPACING.md}px`, background: t.bgPrimary, boxShadow: 'none', gap: SPACING.sm, flexShrink: 0, userSelect: 'none' }}>
+    <div style={{ display: 'flex', alignItems: 'center', height: 58, padding: `0 ${SPACING.md}px`, background: t.bgPhotoStage, boxShadow: 'none', gap: SPACING.sm, flexShrink: 0, userSelect: 'none' }}>
 
       {/* Module tabs */}
       <div style={{ display: 'flex', gap: 4, background: t.bgSecondary, borderRadius: 14, padding: 4, boxShadow: 'none' }}>
@@ -992,13 +1006,14 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
             onMouseLeave={e => { e.currentTarget.style.background = t.accent; }}
           ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="import" size={14} color={t.textInverse} />{tr('toolbar.import')}</span></button>
 
+          <div style={{ position: 'relative' }}>
           <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
             onClick={() => setShowSort(!showSort)}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{tr('toolbar.sort')}<AppIcon name={sort.order === 'asc' ? 'sortAsc' : 'sortDesc'} size={13} color={t.textSecondary} /></span></button>
           {showSort && (
-            <div style={{ position: 'absolute', top: 52, left: 260, background: t.dropdownBg, borderRadius: RADIUS.lg, padding: SPACING.xs, boxShadow: '0 16px 36px rgba(0,0,0,0.34)', zIndex: 100 }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: SPACING.xs, background: t.dropdownBg, borderRadius: RADIUS.lg, padding: SPACING.xs, boxShadow: '0 16px 36px rgba(0,0,0,0.34)', zIndex: 100 }}>
               {(['dateTaken','dateModified','fileName','fileFormat','fileSize','rating'] as const).map(f => (
                 <button key={f} style={{ ...btnBase, display: 'block', width: '100%', padding: `${SPACING.sm}px ${SPACING.lg}px`, background: sort.field === f ? t.accentLight : 'transparent', color: sort.field === f ? t.accent : t.textPrimary, textAlign: 'left', boxShadow: 'none' }}
                   onClick={() => { onSortChange({ ...sort, field: f }); setShowSort(false); }}
@@ -1006,14 +1021,16 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
               ))}
             </div>
           )}
+          </div>
 
           {selectedCount > 0 && (
             <>
+              <div style={{ position: 'relative' }}>
               <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.accent, color: t.textInverse }}
                 onClick={() => setShowBatch(!showBatch)}
               ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={14} color={t.textInverse} />{tr('toolbar.batchPreset')} ({selectedCount})</span></button>
               {showBatch && (
-                <div style={{ position: 'absolute', top: 52, right: 200, background: t.dropdownBg, borderRadius: RADIUS.lg, padding: SPACING.xs, boxShadow: '0 16px 36px rgba(0,0,0,0.34)', zIndex: 100, maxHeight: 300, overflowY: 'auto', minWidth: 180 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: SPACING.xs, background: t.dropdownBg, borderRadius: RADIUS.lg, padding: SPACING.xs, boxShadow: '0 16px 36px rgba(0,0,0,0.34)', zIndex: 100, maxHeight: 300, overflowY: 'auto', minWidth: 180 }}>
                   {presets.slice(0, 20).map(p => (
                     <button key={p.id} style={{ ...btnBase, display: 'block', width: '100%', padding: `${SPACING.sm}px ${SPACING.lg}px`, background: 'transparent', color: t.textPrimary, textAlign: 'left', boxShadow: 'none' }}
                       onClick={() => { onBatchApplyPreset(p.id); setShowBatch(false); }}
@@ -1021,6 +1038,7 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
                   ))}
                 </div>
               )}
+              </div>
               <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.danger, color: t.textInverse }}
                 onClick={onDeleteSelected}
               ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="trash" size={14} color={t.textInverse} />({selectedCount})</span></button>
@@ -1048,10 +1066,10 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
           </span>
 
           <button style={{ ...btnBase, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bgSecondary, color: t.textSecondary, opacity: canUndo ? 1 : 0.3 }}
-            onClick={canUndo ? onUndo : undefined} title={`${tr('toolbar.undo')} (⌘Z)`}
+            onClick={canUndo ? onUndo : undefined} title={tr('toolbar.undoTooltip')}
           ><AppIcon name="undo" size={14} color={t.textSecondary} /></button>
           <button style={{ ...btnBase, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bgSecondary, color: t.textSecondary, opacity: canRedo ? 1 : 0.3 }}
-            onClick={canRedo ? onRedo : undefined} title={`${tr('toolbar.redo')} (⌘⇧Z)`}
+            onClick={canRedo ? onRedo : undefined} title={tr('toolbar.redoTooltip')}
           ><AppIcon name="redo" size={14} color={t.textSecondary} /></button>
         </>
       )}

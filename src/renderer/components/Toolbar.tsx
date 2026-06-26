@@ -87,7 +87,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             style={s(t).btn}
             onClick={() => setShowSort(!showSort)}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
               {tr('toolbar.sort')}: {tr(sortFields.find(f => f.value === sort.field)?.labelKey || 'sort.dateTaken')}
@@ -129,13 +129,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         {/* Undo / Redo */}
         <button style={{ ...s(t).iconBtn, opacity: canUndo ? 1 : 0.3, cursor: canUndo ? 'pointer' : 'not-allowed' }}
           onClick={canUndo ? onUndo : undefined}
-          title={`${tr('toolbar.undo')} (⌘Z)`}
+          title={tr('toolbar.undoTooltip')}
           onMouseEnter={e => { if (canUndo) e.currentTarget.style.background = t.bgHover; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         ><AppIcon name="undo" size={16} color={t.textSecondary} /></button>
         <button style={{ ...s(t).iconBtn, opacity: canRedo ? 1 : 0.3, cursor: canRedo ? 'pointer' : 'not-allowed' }}
           onClick={canRedo ? onRedo : undefined}
-          title={`${tr('toolbar.redo')} (⌘⇧Z)`}
+          title={tr('toolbar.redoTooltip')}
           onMouseEnter={e => { if (canRedo) e.currentTarget.style.background = t.bgHover; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         ><AppIcon name="redo" size={16} color={t.textSecondary} /></button>
@@ -175,7 +175,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button style={s(t).btn}
             onClick={onCompare}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           >{tr('toolbar.compare')}</button>
         )}
 
@@ -221,7 +221,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   toolbar: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     height: COMPONENT_HEIGHT.toolbar, padding: `0 ${SPACING.lg}px`,
-    background: t.bgPrimary,
+    background: t.bgPhotoStage,
     userSelect: 'none', flexShrink: 0, gap: SPACING.sm,
   },
   left: { display: 'flex', alignItems: 'center', gap: SPACING.sm },
@@ -230,7 +230,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   brand: { fontSize: TYPO.large.size, fontWeight: TYPO.large.weight, color: t.accent, letterSpacing: '-0.3px', whiteSpace: 'nowrap' },
   btn: {
     padding: `${SPACING.sm}px ${SPACING.lg}px`, border: 'none', borderRadius: RADIUS.sm,
-    background: t.bgTertiary, color: t.textPrimary, cursor: 'pointer',
+    background: t.bgSecondary, color: t.textPrimary, cursor: 'pointer',
     fontSize: TYPO.body.size, transition: TRANSITION.all, whiteSpace: 'nowrap',
   },
   primaryBtn: {

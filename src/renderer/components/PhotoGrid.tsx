@@ -45,6 +45,7 @@ interface PhotoGridProps {
   onOpenDetail: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onDelete?: (ids: string[]) => void;
+  onSetRating?: (photoId: string, rating: number) => void;
   onCompare?: () => void;
   theme: Theme;
   thumbnailSize: number;
@@ -79,7 +80,7 @@ const ProgressiveImage: React.FC<{ photo: PhotoFile; style: React.CSSProperties 
 };
 
 export const PhotoGrid: React.FC<PhotoGridProps> = ({
-  photos, selectedIds, onSelect, onOpenDetail, onToggleFavorite, onDelete, onCompare,
+  photos, selectedIds, onSelect, onOpenDetail, onToggleFavorite, onDelete, onCompare, onSetRating,
   theme: t, thumbnailSize, showFileExtensions, showGridInfo,
 }) => {
   const { t: tr } = useI18n();
@@ -88,6 +89,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   const [favAnimating, setFavAnimating] = useState<string | null>(null);
   const [presetAppliedId, setPresetAppliedId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [ratingHoverId, setRatingHoverId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; photoId: string } | null>(null);
   const sizeMap = { small: 180, medium: 240, large: 340 };
   const thumbScale = thumbnailSize <= 200 ? 0.75 : thumbnailSize >= 800 ? 1.3 : 1.0;
@@ -159,9 +161,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
             <div key={photo.id} style={{
               ...s(t).card,
               width: '100%',
-              outline: isSelected ? `3px solid ${t.accent}` : 'none',
-              outlineOffset: -3,
-              boxShadow: isHovered ? SHADOW.md : SHADOW.sm,
+              outline: 'none',
+              boxShadow: isSelected ? `0 0 0 3px ${t.accent}` : (isHovered ? SHADOW.md : SHADOW.sm),
               transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
               background: isSelected ? t.selectedBg : t.bgPhotoSurface,
               animation: `fadeInUp ${DURATION.normal}ms ${EASING.out} ${Math.min(idx * 30, 300)}ms both`,
@@ -198,16 +199,38 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
                 >
                   <AppIcon name="star" size={14} color={photo.isFavorite ? t.favStar : t.textTertiary} filled={photo.isFavorite} />
                 </button>
-                {showGridInfo && (
-                  <div style={{
-                    ...s(t).gridInfoOverlay,
-                    opacity: isHovered ? 1 : 0.8,
+                <div style={{
+                    position: 'absolute', bottom: SPACING.sm, left: 0, right: 0,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: `0 ${SPACING.sm}px`,
+                    opacity: isHovered ? 1 : 0.7,
                     transition: `opacity ${DURATION.fast}ms ${EASING.out}`,
+                    pointerEvents: 'none',
                   }}>
-                    {photo.rating > 0 && <span style={s(t).ratingBadgeInline}>{photo.rating}/5</span>}
-                    {photo.isReferenced && <span style={s(t).refBadgeInline}><AppIcon name="link" size={10} color={t.textInverse} /></span>}
+                    {/* Left: Rating stars (5 tiny dots/stars) — clickable area */}
+                    <div style={{ display: 'flex', gap: 2, pointerEvents: 'auto' }}
+                      onMouseEnter={() => setRatingHoverId(photo.id)}
+                      onMouseLeave={() => setRatingHoverId(null)}
+                    >
+                      {[1,2,3,4,5].map((star) => {
+                        const filled = star <= photo.rating;
+                        const hoverFill = ratingHoverId === photo.id && star <= (photo.rating || 1);
+                        return (
+                          <span key={star}
+                            onClick={(e) => { e.stopPropagation(); const newRating = (filled && star === photo.rating ? star - 1 : star) as 0|1|2|3|4|5; onSetRating?.(photo.id, newRating); }}
+                            style={{
+                              fontSize: 10, cursor: 'pointer', color: filled ? t.ratingStar : 'rgba(255,255,255,0.3)',
+                              textShadow: filled ? '0 0 4px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.3)',
+                              transition: `color ${DURATION.fast}ms ${EASING.out}, transform ${DURATION.instant}ms ${EASING.out}`,
+                              lineHeight: 1, userSelect: 'none', padding: '1px',
+                            }}
+                          >★</span>
+                        );
+                      })}
+                    </div>
+                    {/* Right: reference badge */}
+                    {photo.isReferenced && <span style={{ fontSize: TYPO.tiny.size, pointerEvents: 'auto' }}><AppIcon name="link" size={10} color={t.textInverse} /></span>}
                   </div>
-                )}
               </div>
 
               {showGridInfo ? (
@@ -251,8 +274,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   wrapper: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage, minHeight: 0 },
-  controls: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.lg}px`, background: t.bgPhotoStage, flexShrink: 0, borderBottom: `1px solid ${t.borderLight}` },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: `0 ${SPACING.lg}px ${SPACING.lg}px`, minHeight: 0 },
+  controls: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgPhotoStage, flexShrink: 0, borderBottom: `1px solid ${t.borderLight}` },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 },
   grid: { display: 'grid', gap: SPACING.lg },
   card: {
     background: t.bgPhotoSurface, borderRadius: RADIUS.md, overflow: 'hidden',

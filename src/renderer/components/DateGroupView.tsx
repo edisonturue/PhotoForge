@@ -89,7 +89,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage }}>
       {/* Sticky group mode toggle */}
-      <div style={{ display: 'flex', gap: SPACING.sm, padding: `${SPACING.sm}px ${SPACING.lg}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: SPACING.sm, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
         {(['day', 'month', 'year'] as const).map(mode => (
           <button key={mode} style={{
             padding: `${SPACING.sm}px ${SPACING.lg}px`,
@@ -110,7 +110,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
       </div>
 
       {/* Scrollable groups */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.lg}px ${SPACING.lg}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
       {/* Groups */}
       {groups.map(group => (
         <div key={group.dateKey} style={{ marginBottom: SPACING.xl }}>
@@ -135,7 +135,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = SHADOW.md; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
-                <div style={{ aspectRatio: '1', overflow: 'hidden', background: t.bgTertiary }}>
+                <div style={{ aspectRatio: '1', overflow: 'hidden', background: t.bgSecondary }}>
                   <img
                     src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

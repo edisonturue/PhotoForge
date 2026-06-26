@@ -67,7 +67,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({ photos, onBack, 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: `linear-gradient(180deg, ${t.bgPhotoStage}, ${t.bgPrimary})` }}>
       {/* Sticky header */}
-      <div style={{ ...styles.header(t), flexShrink: 0, padding: `${SPACING.xl}px ${SPACING.xxl}px ${SPACING.sm}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}` }}>
+      <div style={{ ...styles.header(t), flexShrink: 0, padding: `${SPACING.xl}px ${SPACING.md}px ${SPACING.sm}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}` }}>
         <button style={styles.backBtn(t)} onClick={onBack}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
             <AppIcon name="back" size={14} color={t.textPrimary} />
@@ -82,7 +82,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({ photos, onBack, 
 
 
       {/* Scrollable analytics */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.xxl}px ${SPACING.xxl}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
       <section style={styles.metricsGrid}>
         <MetricCard theme={t} icon="camera" label={tr('stats.totalPhotos')} value={String(photos.length)} />
         <MetricCard theme={t} icon="folder" label={tr('stats.totalSize')} value={formatBytes(stats.totalSize)} />
@@ -222,7 +222,7 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     background: `linear-gradient(180deg, ${t.bgPhotoStage}, ${t.bgPrimary})`,
-    padding: `${SPACING.xl}px ${SPACING.xxl}px ${SPACING.xxl}px`,
+    padding: `${SPACING.xl}px ${SPACING.md}px ${SPACING.md}px`,
   }),
   header: (t: Theme): React.CSSProperties => ({
     display: 'flex',
@@ -246,7 +246,7 @@ const styles = {
   backBtn: (t: Theme): React.CSSProperties => ({
     padding: `${SPACING.sm}px ${SPACING.lg}px`,
     borderRadius: 12,
-    background: `linear-gradient(180deg, ${t.bgTertiary}, ${t.bgSecondary})`,
+    background: `linear-gradient(180deg, ${t.bgSecondary}, ${t.bgSecondary})`,
     color: t.textPrimary,
     cursor: 'pointer',
     fontSize: TYPO.body.size,
@@ -401,7 +401,7 @@ const styles = {
   ratingTrack: (t: Theme): React.CSSProperties => ({
     flex: 1,
     height: 16,
-    background: t.bgTertiary,
+    background: t.bgSecondary,
     borderRadius: RADIUS.sm,
     overflow: 'hidden',
   }),

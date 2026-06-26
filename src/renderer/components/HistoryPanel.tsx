@@ -24,7 +24,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ entries, onJumpTo, o
   if (entries.length === 0) {
     return (
       <div style={{ padding: SPACING.lg, textAlign: 'center' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, marginBottom: SPACING.sm, borderRadius: RADIUS.pill, background: t.bgTertiary, opacity: 0.75 }}><AppIcon name="logs" size={18} color={t.textTertiary} /></div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, marginBottom: SPACING.sm, borderRadius: RADIUS.pill, background: t.bgSecondary, opacity: 0.75 }}><AppIcon name="logs" size={18} color={t.textTertiary} /></div>
         <div style={{ fontSize: TYPO.small.size, color: t.textTertiary }}>{tr('history.empty')}</div>
       </div>
     );

@@ -102,10 +102,10 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
   }, [getValue]);
 
   const groups = [
-    { key: 'light', label: lang === 'zh-CN' ? '光线' : 'Light', keys: ['exposure', 'brightness', 'contrast', 'highlights', 'shadows', 'whites', 'blacks', 'gamma'] as NumericAdjustmentKey[] },
-    { key: 'color', label: lang === 'zh-CN' ? '色彩' : 'Color', keys: ['saturation', 'temperature', 'tint', 'hue'] as NumericAdjustmentKey[] },
-    { key: 'detail', label: lang === 'zh-CN' ? '细节' : 'Detail', keys: ['clarity', 'sharpness'] as NumericAdjustmentKey[] },
-    { key: 'effects', label: lang === 'zh-CN' ? '效果' : 'Effects', keys: ['vignette', 'grain'] as NumericAdjustmentKey[] },
+    { key: 'light', label: tr('adjustment.light'), keys: ['exposure', 'brightness', 'contrast', 'highlights', 'shadows', 'whites', 'blacks', 'gamma'] as NumericAdjustmentKey[] },
+    { key: 'color', label: tr('adjustment.color'), keys: ['saturation', 'temperature', 'tint', 'hue'] as NumericAdjustmentKey[] },
+    { key: 'detail', label: tr('adjustment.detail'), keys: ['clarity', 'sharpness'] as NumericAdjustmentKey[] },
+    { key: 'effects', label: tr('adjustment.effects'), keys: ['vignette', 'grain'] as NumericAdjustmentKey[] },
   ];
 
   return (
@@ -113,7 +113,7 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
       {/* Header with reset */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md }}>
         <span style={{ fontSize: TYPO.small.size, fontWeight: 600, color: t.textPrimary }}>
-          {lang === 'zh-CN' ? '调整参数' : 'Adjustments'}
+          {tr('detail.editAdjustments')}
         </span>
         {hasCustom && (
           <button style={{
@@ -124,7 +124,7 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
             onClick={handleResetAll}
             onMouseEnter={e => { e.currentTarget.style.background = t.accentLight; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-          >{lang === 'zh-CN' ? '重置全部' : 'Reset All'}</button>
+          >{tr('adjustment.resetAll')}</button>
         )}
       </div>
 
@@ -136,7 +136,7 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
           color: t.accent, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={12} color={t.accent} />{appliedPreset.name}</span>
-          {hasCustom && <span style={{ fontSize: TYPO.tiny.size }}>{lang === 'zh-CN' ? '(已微调)' : '(tweaked)'}</span>}
+          {hasCustom && <span style={{ fontSize: TYPO.tiny.size }}>{tr('adjustment.tweaked')}</span>}
         </div>
       )}
 
@@ -190,12 +190,12 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
                         {!isDefault && (
                           <button style={{
                             width: 16, height: 16, border: 'none', borderRadius: '50%',
-                            background: t.bgTertiary, color: t.textTertiary, cursor: 'pointer',
+                            background: t.bgSecondary, color: t.textTertiary, cursor: 'pointer',
                             fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: TRANSITION.all, padding: 0,
                           }}
                             onClick={() => handleReset(adjKey)}
-                            title={lang === 'zh-CN' ? '重置' : 'Reset'}
+                            title={tr('adjustment.reset')}
                           ><AppIcon name="x" size={10} color={t.textTertiary} /></button>
                         )}
                       </div>
@@ -204,7 +204,7 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
                       {/* Track background */}
                       <div style={{
                         position: 'absolute', left: 0, right: 0, height: 4,
-                        background: t.bgTertiary, borderRadius: 2,
+                        background: t.bgSecondary, borderRadius: 2,
                       }}>
                         {/* Center mark for bipolar sliders */}
                         {adj.range[0] < 0 && (

@@ -29,11 +29,11 @@ export const CompareView: React.FC<CompareViewProps> = ({ photos, onBack, theme:
         <div style={{ fontSize: TYPO.heading.size, color: t.textTertiary, marginBottom: SPACING.md }}>{tr('compare.selectHint')}</div>
         <button style={{
           padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none',
-          borderRadius: RADIUS.sm, background: t.bgTertiary, color: t.textPrimary,
+          borderRadius: RADIUS.sm, background: t.bgSecondary, color: t.textPrimary,
           cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all,
         }} onClick={onBack}
           onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-          onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+          onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
         >{tr('compare.back')}</button>
       </div>
     );
@@ -59,20 +59,20 @@ export const CompareView: React.FC<CompareViewProps> = ({ photos, onBack, theme:
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage }}>
       {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.lg}px`, background: `linear-gradient(180deg, ${t.bgPrimary}, ${t.bgSecondary})`, boxShadow: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.md}px`, background: `linear-gradient(180deg, ${t.bgPrimary}, ${t.bgSecondary})`, boxShadow: 'none' }}>
         <button style={{
           padding: `${SPACING.xs}px ${SPACING.lg}px`, border: 'none',
-          borderRadius: RADIUS.sm, background: t.bgTertiary, color: t.textPrimary,
+          borderRadius: RADIUS.sm, background: t.bgSecondary, color: t.textPrimary,
           cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all,
         }} onClick={onBack}
           onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-          onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+          onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
         >{tr('compare.back')}</button>
 
         <span style={{ color: t.textSecondary, fontSize: TYPO.body.size }}>{tr('compare.title')} · {photos.length} {tr('compare.photos')}</span>
 
         {/* Mode selector */}
-        <div style={{ display: 'flex', gap: 2, background: t.bgTertiary, borderRadius: 14, padding: 2, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', gap: 2, background: t.bgSecondary, borderRadius: 14, padding: 2, marginLeft: 'auto' }}>
           {modes.map(m => (
             <button key={m.key} style={{
               padding: `${SPACING.xs}px ${SPACING.md}px`, border: 'none', borderRadius: RADIUS.sm,

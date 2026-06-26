@@ -83,15 +83,15 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage }}>
         {/* Sticky header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.lg}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
           <button style={{
             padding: `${SPACING.sm}px ${SPACING.lg}px`, border: 'none',
-            borderRadius: RADIUS.sm, background: t.bgTertiary, color: t.textPrimary,
+            borderRadius: RADIUS.sm, background: t.bgSecondary, color: t.textPrimary,
             cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all,
           }}
             onClick={() => setActiveAlbumId(null)}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="back" size={14} color={t.textPrimary} />{tr('smartAlbum.back')}</span></button>
           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: RADIUS.pill, background: t.accentBg, color: t.accent }}>{activeAlbum.icon}</span>
           <h2 style={{ margin: 0, fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary }}>
@@ -123,7 +123,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
           </div>
         </div>
         {/* Scrollable photos */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.lg}px ${SPACING.lg}px`, minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${gridColWidth}px, 1fr))`, gap: SPACING.md }}>
           {activeAlbum.photos.map(photo => (
             <div key={photo.id} style={{
@@ -135,7 +135,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
               onMouseEnter={e => { e.currentTarget.style.boxShadow = SHADOW.md; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
             >
-              <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: t.bgTertiary }}>
+              <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: t.bgSecondary }}>
                 <img src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" alt="" />
               </div>
@@ -154,13 +154,13 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage }}>
       {/* Sticky header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.xl}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgPhotoStage, borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0 }}>
         <h2 style={{ margin: 0, fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary }}>
           {tr('smartAlbum.title')}
         </h2>
       </div>
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.xl}px ${SPACING.xl}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
 
       {/* Built-in smart albums */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: SPACING.lg, marginBottom: SPACING.xxl }}>
@@ -253,7 +253,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
                     onChange={e => setEditingValue(e.target.value)}
                     onBlur={() => { if (editingValue.trim()) onUpdateCollection?.(col.id, { name: editingValue.trim() }); setEditingAlbumId(null); setEditingField(null); }}
                     onKeyDown={e => { if (e.key === 'Enter') { if (editingValue.trim()) onUpdateCollection?.(col.id, { name: editingValue.trim() }); setEditingAlbumId(null); setEditingField(null); } if (e.key === 'Escape') { setEditingAlbumId(null); setEditingField(null); } }}
-                    style={{ fontSize: TYPO.subheading.size, fontWeight: 600, color: t.textPrimary, background: t.bgTertiary, border: `1px solid ${t.accent}`, borderRadius: RADIUS.sm, padding: `${SPACING.xs}px ${SPACING.sm}px`, width: '100%', outline: 'none' }}
+                    style={{ fontSize: TYPO.subheading.size, fontWeight: 600, color: t.textPrimary, background: t.bgSecondary, border: `1px solid ${t.accent}`, borderRadius: RADIUS.sm, padding: `${SPACING.xs}px ${SPACING.sm}px`, width: '100%', outline: 'none' }}
                     onClick={e => e.stopPropagation()}
                   />
                 ) : (
@@ -270,7 +270,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
                     onChange={e => setEditingValue(e.target.value)}
                     onBlur={() => { onUpdateCollection?.(col.id, { description: editingValue }); setEditingAlbumId(null); setEditingField(null); }}
                     onKeyDown={e => { if (e.key === 'Enter') { onUpdateCollection?.(col.id, { description: editingValue }); setEditingAlbumId(null); setEditingField(null); } if (e.key === 'Escape') { setEditingAlbumId(null); setEditingField(null); } }}
-                    style={{ fontSize: TYPO.caption.size, color: t.textTertiary, background: t.bgTertiary, border: `1px solid ${t.accent}`, borderRadius: RADIUS.sm, padding: `${SPACING.xs}px ${SPACING.sm}px`, width: '100%', outline: 'none', marginTop: SPACING.xs }}
+                    style={{ fontSize: TYPO.caption.size, color: t.textTertiary, background: t.bgSecondary, border: `1px solid ${t.accent}`, borderRadius: RADIUS.sm, padding: `${SPACING.xs}px ${SPACING.sm}px`, width: '100%', outline: 'none', marginTop: SPACING.xs }}
                     onClick={e => e.stopPropagation()}
                   />
                 ) : (

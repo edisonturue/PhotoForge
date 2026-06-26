@@ -60,7 +60,7 @@ export const Histogram: React.FC<HistogramProps> = ({ imageUrl, theme: t, width 
       ctx.clearRect(0, 0, width, height);
 
       // Background
-      ctx.fillStyle = t.bgTertiary;
+      ctx.fillStyle = t.bgSecondary;
       ctx.fillRect(0, 0, width, height);
 
       // Draw luminance histogram (main)

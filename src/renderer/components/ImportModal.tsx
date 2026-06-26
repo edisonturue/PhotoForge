@@ -36,10 +36,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
         <div style={s(t).modeSection}>
           <label style={s(t).modeLabel}>{tr('import.mode')}</label>
           <div style={s(t).modeButtons}>
-            <button style={{ ...s(t).modeBtn, background: importMode === 'copy' ? t.accentLight : t.bgTertiary, color: importMode === 'copy' ? t.accent : t.textSecondary, outline: importMode === 'copy' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('copy')}>
+            <button style={{ ...s(t).modeBtn, background: importMode === 'copy' ? t.accentLight : t.bgSecondary, color: importMode === 'copy' ? t.accent : t.textSecondary, outline: importMode === 'copy' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('copy')}>
               {tr('import.copyToLibrary')}<span style={s(t).modeBtnDesc}>{tr('import.copyDesc')}</span>
             </button>
-            <button style={{ ...s(t).modeBtn, background: importMode === 'reference' ? t.accentLight : t.bgTertiary, color: importMode === 'reference' ? t.accent : t.textSecondary, outline: importMode === 'reference' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('reference')}>
+            <button style={{ ...s(t).modeBtn, background: importMode === 'reference' ? t.accentLight : t.bgSecondary, color: importMode === 'reference' ? t.accent : t.textSecondary, outline: importMode === 'reference' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('reference')}>
               {tr('import.reference')}<span style={s(t).modeBtnDesc}>{tr('import.refDesc')}</span>
             </button>
           </div>
@@ -84,7 +84,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   dropZone: { border: '2px dashed', borderRadius: 16, padding: `${SPACING.xxl}px ${SPACING.lg}px`, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.2)' },
   selectBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size },
   pathList: { marginBottom: SPACING.md, maxHeight: 120, overflowY: 'auto' }, pathItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${SPACING.xs}px ${SPACING.md}px`, background: `linear-gradient(180deg, ${t.bgSecondary}, ${t.bgPrimary})`, borderRadius: 12, marginBottom: SPACING.xs }, pathText: { fontSize: TYPO.small.size, color: t.textSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, removeBtn: { border: 'none', background: 'transparent', color: t.textTertiary, cursor: 'pointer', fontSize: 14, marginLeft: 8 },
-  progressArea: { marginBottom: SPACING.md }, progressBar: { height: 6, background: t.bgTertiary, borderRadius: 999, overflow: 'hidden' }, progressFill: { height: '100%', background: t.accent, borderRadius: 999, transition: 'width 0.3s' },
+  progressArea: { marginBottom: SPACING.md }, progressBar: { height: 6, background: t.bgSecondary, borderRadius: 999, overflow: 'hidden' }, progressFill: { height: '100%', background: t.accent, borderRadius: 999, transition: 'width 0.3s' },
   actions: { display: 'flex', justifyContent: 'flex-end', gap: SPACING.sm, alignItems: 'center', padding: `${SPACING.md}px ${SPACING.xl}px ${SPACING.xl}px`, flexShrink: 0 }, cancelBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.body.size }, importBtn: { padding: '8px 24px', border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600 },
   formats: { padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgSecondary, borderRadius: 12 },
 });

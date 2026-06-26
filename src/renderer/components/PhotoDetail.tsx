@@ -206,7 +206,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   const handleExport = async () => {
     try {
       const result = await window.photoForge.saveFileDialog({
-        title: lang === 'zh-CN' ? '导出照片' : 'Export Photo',
+        title: tr('detail.exportPhoto'),
         defaultPath: previewNamingTemplate(exportNamingTemplate) + '.' + exportFormat,
         filters: [{ name: exportFormat.toUpperCase(), extensions: [exportFormat] }],
       });
@@ -224,13 +224,13 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       });
       if (success) {
         setExportResultPath(result.filePath);
-        onToast?.('success', lang === 'zh-CN' ? '照片导出完成' : 'Photo exported successfully');
+        onToast?.('success', tr('detail.exportComplete'));
         // Open containing folder in Finder
         try { await window.photoForge.openFolder(result.filePath); } catch { /* */ }
       } else {
-        onToast?.('error', lang === 'zh-CN' ? '导出失败' : 'Export failed');
+        onToast?.('error', tr('detail.exportFailed'));
       }
-    } catch { onToast?.('error', lang === 'zh-CN' ? '导出失败' : 'Export failed'); }
+    } catch { onToast?.('error', tr('detail.exportFailed')); }
   };
 
 
@@ -254,7 +254,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
 
   const tabs = [
     { key: 'info' as const, label: tr('detail.info'), icon: <AppIcon name="info" size={14} /> },
-    { key: 'adjust' as const, label: lang === 'zh-CN' ? '调整' : 'Adjust', icon: <AppIcon name="adjustments" size={14} /> },
+    { key: 'adjust' as const, label: tr('detail.adjustTab'), icon: <AppIcon name="adjustments" size={14} /> },
     { key: 'presets' as const, label: tr('detail.presets'), icon: <AppIcon name="sparkles" size={14} /> },
     { key: 'export' as const, label: tr('detail.export'), icon: <AppIcon name="export" size={14} /> },
   ];
@@ -265,25 +265,25 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       <div style={s(t).topBar}>
         <button style={s(t).backBtn} onClick={onBack}
           onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-          onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+          onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
         >{tr('detail.back')}</button>
         <span style={s(t).photoName}>{photo.fileName}</span>
         <div style={s(t).topActions}>
           <button style={s(t).iconBtn} onClick={handleFlipH} title={tr('detail.flipH')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="flipH" size={14} color={t.textPrimary} /></button>
           <button style={s(t).iconBtn} onClick={handleFlipV} title={tr('detail.flipV')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="flipV" size={14} color={t.textPrimary} /></button>
           <button style={s(t).iconBtn} onClick={handleRotate} title={tr('detail.rotate')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="rotate" size={14} color={t.textPrimary} /></button>
           <button style={s(t).iconBtn} onClick={resetView} title={tr('detail.resetView')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="search" size={14} color={t.textPrimary} /></button>
           {cropMode ? (
             <>
@@ -318,7 +318,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
               <div style={{ ...s(t).cropBox, left: `${cropRegion.x * 100}%`, top: `${cropRegion.y * 100}%`, width: `${cropRegion.width * 100}%`, height: `${cropRegion.height * 100}%` }}>
                 <div style={{ display: 'flex', gap: 4, position: 'absolute', top: -28, left: 0 }}>
                   {cropPresets.map(cp => (
-                    <button key={cp.value} style={{ ...s(t).cropPresetBtn, background: cropPreset === cp.value ? t.accent : t.bgTertiary, color: cropPreset === cp.value ? t.textInverse : t.textSecondary }}
+                    <button key={cp.value} style={{ ...s(t).cropPresetBtn, background: cropPreset === cp.value ? t.accent : t.bgSecondary, color: cropPreset === cp.value ? t.textInverse : t.textSecondary }}
                       onClick={() => applyCropPreset(cp.value)}>{cp.label}</button>
                   ))}
                 </div>
@@ -352,7 +352,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                 {/* Histogram */}
                 <div style={s(t).surfaceSection}>
                   <div style={s(t).sectionTitle}>
-                    {lang === 'zh-CN' ? '直方图' : 'Histogram'}
+                    {tr('detail.histogram')}
                   </div>
                   <Histogram imageUrl={imageSrc} theme={t} width={280} height={60} />
                 </div>
@@ -380,7 +380,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                   <div style={{ display: 'flex', gap: SPACING.sm, flexWrap: 'wrap' }}>
                     {labelOptions.map(opt => (
                       <button key={opt.key} style={{
-                        width: 24, height: 24, borderRadius: '50%', border: `1px solid ${photo.colorLabel === opt.key ? t.accent : t.borderLight}`, cursor: 'pointer',
+                        width: 24, height: 24, borderRadius: '50%', border: `1px solid ${photo.colorLabel === opt.key ? t.accent : t.border}`, cursor: 'pointer',
                         background: opt.color,
                         outline: photo.colorLabel === opt.key ? `2px solid ${t.accent}` : 'none',
                         outlineOffset: 2,
@@ -400,7 +400,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                   <InlineEdit
                     value={photo.title || ''}
                     onSave={(val) => onUpdatePhoto(photo.id, { title: val })}
-                    placeholder={lang === 'zh-CN' ? '添加标题...' : 'Add title...'}
+                    placeholder={tr('detail.titlePlaceholder')}
                     theme={t}
                   />
                 </div>
@@ -411,7 +411,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                   <InlineEdit
                     value={photo.description || ''}
                     onSave={(val) => onUpdatePhoto(photo.id, { description: val })}
-                    placeholder={lang === 'zh-CN' ? '添加描述...' : 'Add description...'}
+                    placeholder={tr('detail.descPlaceholder')}
                     theme={t}
                     multiline
                   />
@@ -437,7 +437,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                   <InlineEdit
                     value={photo.cameraModel || ''}
                     onSave={(val) => onUpdatePhoto(photo.id, { cameraModel: val || null })}
-                    placeholder={lang === 'zh-CN' ? '相机型号...' : 'Camera model...'}
+                    placeholder={tr('detail.cameraPlaceholder')}
                     theme={t}
                   />
                 </div>
@@ -449,7 +449,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                     <input
                       type="number"
                       step="any"
-                      placeholder="Lat"
+                      placeholder={tr('detail.lat')}
                       value={photo.latitude ?? ''}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -460,7 +460,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                     <input
                       type="number"
                       step="any"
-                      placeholder="Lng"
+                      placeholder={tr('detail.lng')}
                       value={photo.longitude ?? ''}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -497,17 +497,17 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                 <div style={s(t).surfaceSection}>
                   <label style={s(t).label}>{tr('detail.meta')}</label>
                   {[
-                    [lang === 'zh-CN' ? '文件名' : 'Filename', photo.fileName],
+                    [tr('detail.filename'), photo.fileName],
                     [tr('detail.format'), photo.fileFormat],
-                    [lang === 'zh-CN' ? '大小' : 'Size', (photo.fileSize / 1048576).toFixed(1) + ' MB'],
-                    [lang === 'zh-CN' ? '分辨率' : 'Resolution', `${photo.width} x ${photo.height}`],
+                    [tr('detail.size'), (photo.fileSize / 1048576).toFixed(1) + ' MB'],
+                    [tr('detail.resolution'), `${photo.width} x ${photo.height}`],
                     ['ISO', photo.iso?.toString() || '—'],
-                    [lang === 'zh-CN' ? '光圈' : 'Aperture', photo.aperture ? `f/${photo.aperture}` : '—'],
-                    [lang === 'zh-CN' ? '快门' : 'Shutter', photo.shutterSpeed || '—'],
-                    [lang === 'zh-CN' ? '焦距' : 'Focal', photo.focalLength ? `${photo.focalLength}mm` : '—'],
+                    [tr('detail.aperture'), photo.aperture ? `f/${photo.aperture}` : '—'],
+                    [tr('detail.shutter'), photo.shutterSpeed || '—'],
+                    [tr('detail.focal'), photo.focalLength ? `${photo.focalLength}mm` : '—'],
                     ['Camera', photo.cameraModel || '—'],
                     ['Lens', photo.lensModel || '—'],
-                    [lang === 'zh-CN' ? '拍摄日期' : 'Date', photo.dateTaken ? new Date(photo.dateTaken).toLocaleString() : '—'],
+                    [tr('detail.editDate'), photo.dateTaken ? new Date(photo.dateTaken).toLocaleString() : '—'],
                   ].map(([k, v]) => (
                     <div key={k} style={s(t).metaRow}>
                       <span style={s(t).metaLabel}>{k}</span>
@@ -574,7 +574,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                       padding: `${SPACING.sm}px ${SPACING.xs}px`,
                       borderRadius: RADIUS.sm, cursor: 'pointer', fontSize: TYPO.small.size,
                       textAlign: 'center', display: 'block', width: '100%',
-                      border: `1px solid ${photo.presetApplied === preset.id ? t.accent : t.borderLight}`,
+                      border: `1px solid ${photo.presetApplied === preset.id ? t.accent : t.border}`,
                       background: photo.presetApplied === preset.id ? t.accentLight : t.bgCard,
                       color: photo.presetApplied === preset.id ? t.accent : t.textPrimary,
                       fontWeight: photo.presetApplied === preset.id ? 600 : 400,
@@ -613,7 +613,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                         onClick={() => setShowPlaceholderMenu(!showPlaceholderMenu)}
                         onMouseEnter={e => { e.currentTarget.style.background = t.accentLight; }}
                         onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                      ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{lang === 'zh-CN' ? '插入' : 'Insert'}<AppIcon name="chevronDown" size={12} color={t.textSecondary} /></span></button>
+                      ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{tr('detail.insert')}<AppIcon name="chevronDown" size={12} color={t.textSecondary} /></span></button>
                       {showPlaceholderMenu && (
                         <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 2, background: t.dropdownBg, borderRadius: RADIUS.md, padding: SPACING.xs, boxShadow: SHADOW.lg, zIndex: 200, minWidth: 180 }}>
                           {PLACEHOLDERS.map(p => (
@@ -632,7 +632,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                   </div>
                 </div>
                 <div style={s(t).surfaceSection}>
-                  <div style={s(t).sectionTitle}>{lang === 'zh-CN' ? '导出选项' : 'Export options'}</div>
+                  <div style={s(t).sectionTitle}>{tr('detail.exportOptions')}</div>
                   <div style={s(t).checkboxGroup}>
                   <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportPreserveExif} onChange={e => setExportPreserveExif(e.target.checked)} />{tr('detail.preservedExif')}</label>
                   <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportApplyPreset} onChange={e => setExportApplyPreset(e.target.checked)} />{tr('detail.applyPresetSettings')}</label>
@@ -682,10 +682,10 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   field: { marginBottom: SPACING.lg },
   label: { display: 'block', fontSize: TYPO.small.size, color: t.textTertiary, marginBottom: SPACING.xs },
   sectionTitle: { fontSize: TYPO.small.size, fontWeight: 700, color: t.textPrimary, marginBottom: SPACING.md, textTransform: 'uppercase', letterSpacing: 0.8 },
-  surfaceSection: { marginBottom: SPACING.lg, padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgSecondary, borderRadius: 14, boxShadow: 'none' },
+  surfaceSection: { marginBottom: SPACING.lg, padding: `${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary, borderRadius: 14, boxShadow: 'none' },
   starBtn: { border: 'none', background: t.bgSecondary, cursor: 'pointer', fontSize: 20, transition: TRANSITION.all, width: 32, height: 32, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'none' },
   colorBtn: { width: 24, height: 24, borderRadius: '50%', border: 'none', cursor: 'pointer', transition: TRANSITION.all },
-  tagChip: { display: 'inline-flex', alignItems: 'center', gap: SPACING.xs, padding: `4px ${SPACING.sm}px`, background: t.bgTertiary, borderRadius: RADIUS.pill, fontSize: TYPO.small.size, color: t.textPrimary },
+  tagChip: { display: 'inline-flex', alignItems: 'center', gap: SPACING.xs, padding: `4px ${SPACING.sm}px`, background: t.bgSecondary, borderRadius: RADIUS.pill, fontSize: TYPO.small.size, color: t.textPrimary },
   tagRemoveBtn: { border: 'none', background: 'transparent', color: t.textTertiary, cursor: 'pointer', fontSize: TYPO.small.size, padding: 0 },
   tagInput: { flex: 1, padding: `${SPACING.sm}px ${SPACING.md}px`, border: `1px solid ${t.border}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none' },
   fieldInput: { padding: `${SPACING.sm}px ${SPACING.md}px`, border: `1px solid ${t.border}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', boxShadow: 'none' },
@@ -698,7 +698,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   editSection: { marginBottom: SPACING.lg, padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgPhotoSurface, borderRadius: 14 },
   editSectionTitle: { fontSize: TYPO.body.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.sm },
   smallLinkBtn: { border: 'none', background: 'transparent', color: t.accent, cursor: 'pointer', fontSize: TYPO.tiny.size, padding: 0, transition: TRANSITION.all },
-  selectInput: { width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, border: `1px solid ${t.borderLight}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', boxShadow: 'none' },
+  selectInput: { width: '100%', padding: `${SPACING.sm}px ${SPACING.md}px`, border: `1px solid ${t.border}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', boxShadow: 'none' },
   checkboxGroup: { display: 'flex', flexDirection: 'column', gap: SPACING.sm },
   checkboxLabel: { display: 'flex', alignItems: 'center', gap: SPACING.sm, fontSize: TYPO.small.size, color: t.textSecondary, cursor: 'pointer', padding: `${SPACING.sm}px ${SPACING.md}px`, borderRadius: 12, background: t.bgPrimary, boxShadow: 'none' },
   exportBtn: { width: '100%', padding: `${SPACING.md}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600, marginTop: SPACING.sm, transition: TRANSITION.all },

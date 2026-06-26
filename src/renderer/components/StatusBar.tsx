@@ -23,7 +23,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ totalPhotos, displayedPhot
 };
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
-  bar: { display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 16px',background:t.panelBg,fontSize:11,color:t.textTertiary,flexShrink:0,boxShadow:'none' },
+  bar: { display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px ${SPACING.md}px',background:t.panelBg,fontSize:11,color:t.textTertiary,flexShrink:0,borderTop:`1px solid ${t.border}`,boxShadow:'none' },
   left: { display:'flex',gap:4 }, right: {},
   metric: { display: 'inline-flex', alignItems: 'center' },
 });

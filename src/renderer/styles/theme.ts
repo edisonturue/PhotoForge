@@ -15,30 +15,30 @@ const lightTheme = {
   // Backgrounds — achromatic, layered by lightness only
   bgPrimary: '#f7f7f7',
   bgSecondary: '#f0f0f0',
-  bgTertiary: '#e6e6e6',
+  bgTertiary: '#f0f0f0',
   bgCard: '#fcfcfc',
   bgHover: '#ebebeb',
   bgOverlay: 'rgba(0,0,0,0.40)',
   bgInput: '#fefefe',
-  bgPhotoStage: '#e9e9e9',
+  bgPhotoStage: '#dfdfdf',
   bgPhotoSurface: '#fbfbfb',
 
   // Borders — barely visible, receding
-  border: '#dfdfdf',
-  borderLight: '#ebebeb',
+  border: '#d0d0d0',
+  borderLight: 'transparent',
   borderFocus: '#6f6f88',
 
   // Text — crisp, high-contrast where it matters
   textPrimary: '#1a1a1c',
   textSecondary: '#636366',
-  textTertiary: '#8e8e93',
+  textTertiary: '#767680',
   textInverse: '#ffffff',
 
   // Brand / Accent — ultra-muted steel (HSL 235 10% 48%)
   // Used sparingly: selected states, links, primary actions
   accent: '#6f6f88',
   accentHover: '#5e5e7a',
-  accentLight: '#f4f4f9',
+  accentLight: '#ececf2',
   accentBg: '#f8f8fb',
 
   // Status — restrained, never vivid
@@ -51,13 +51,13 @@ const lightTheme = {
   successLight: '#eff7f2',
 
   // Specific surfaces
-  sidebarBg: '#f0f0f0',
+  sidebarBg: '#dfdfdf',
   panelBg: '#fcfcfc',
   gridItemBg: '#fdfdfd',
   dropdownBg: '#ffffff',
   modalBg: '#fcfcfc',
   scrollbarTrack: '#e8e8e8',
-  emptyState: '#8e8e93',
+  emptyState: '#767680',
   ratingStar: '#d49b1f',
   favStar: '#d49b1f',
   colorLabelRed: '#d15555',
@@ -83,31 +83,31 @@ const lightTheme = {
 const darkTheme = {
   // Backgrounds — deep, layered by subtle brightness steps
   bgPrimary: '#0e0d0c',
-  bgSecondary: '#141312',
-  bgTertiary: '#1c1b19',
-  bgCard: '#171614',
-  bgHover: '#232220',
+  bgSecondary: '#191817',
+  bgTertiary: '#191817',
+  bgCard: '#1c1b19',
+  bgHover: '#2b2a27',
   bgOverlay: 'rgba(0,0,0,0.70)',
-  bgInput: '#181715',
-  bgPhotoStage: '#080807',
-  bgPhotoSurface: '#11100f',
+  bgInput: '#1f1e1b',
+  bgPhotoStage: '#0e0d0c',
+  bgPhotoSurface: '#171614',
 
   // Borders — subtle, receding
-  border: '#282724',
-  borderLight: '#1e1d1b',
+  border: '#3a3936',
+  borderLight: 'transparent',
   borderFocus: '#938a78',
 
   // Text — warm but neutral
   textPrimary: '#ecebe8',
-  textSecondary: '#b4b3ae',
-  textTertiary: '#7a7974',
+  textSecondary: '#c2c0bb',
+  textTertiary: '#918f8a',
   textInverse: '#0e0d0c',
 
   // Brand / Accent — warm stone (HSL 37 10% 52%)
   // Muted warm accent against cool-neutral backgrounds
   accent: '#938a78',
   accentHover: '#a59b87',
-  accentLight: '#24231e',
+  accentLight: '#32312b',
   accentBg: '#1c1b18',
 
   // Status — muted warm tones
@@ -120,13 +120,13 @@ const darkTheme = {
   successLight: '#18241e',
 
   // Specific surfaces
-  sidebarBg: '#11100f',
+  sidebarBg: '#0e0d0c',
   panelBg: '#171614',
   gridItemBg: '#191816',
   dropdownBg: '#1a1917',
   modalBg: '#171614',
   scrollbarTrack: '#1c1b19',
-  emptyState: '#7a7974',
+  emptyState: '#918f8a',
   ratingStar: '#b5974c',
   favStar: '#b5974c',
   colorLabelRed: '#bd6e68',
@@ -150,64 +150,70 @@ const darkTheme = {
 
 // Vintage "Darkroom Green" — muted forest, ~18% accent saturation
 const vintageTheme = {
-  bgPrimary: '#131614',
-  bgSecondary: '#1a1e1b',
-  bgTertiary: '#242925',
-  bgCard: '#1d221f',
-  bgHover: '#2c322e',
-  bgOverlay: 'rgba(8,10,9,0.76)',
-  bgInput: '#1b1f1c',
-  bgPhotoStage: '#0b0d0c',
-  bgPhotoSurface: '#141815',
+  // Muted forest — green undertone, not overwhelming
+  bgPrimary: '#1e2622',
+  bgSecondary: '#262d29',
+  bgTertiary: '#262d29',
+  bgCard: '#222a25',
+  bgHover: '#2f3732',
+  bgOverlay: 'rgba(8,12,10,0.76)',
+  bgInput: '#232b26',
+  bgPhotoStage: '#171d1a',
+  bgPhotoSurface: '#1e2622',
 
-  border: '#2c322e',
-  borderLight: '#222824',
-  borderFocus: '#5a816e',
+  // Subtle borders
+  border: '#35433a',
+  borderLight: 'transparent',
+  borderFocus: '#5a9a6a',
 
-  textPrimary: '#edeeec',
-  textSecondary: '#b9beb7',
-  textTertiary: '#798078',
-  textInverse: '#0f1210',
+  // High-contrast text
+  textPrimary: '#f0f2ef',
+  textSecondary: '#c9cfca',
+  textTertiary: '#a1aba3',
+  textInverse: '#171d1a',
 
-  accent: '#56816a',
-  accentHover: '#66937b',
-  accentLight: '#1c2620',
-  accentBg: '#151d18',
+  // Muted sage accent — visible but not glaring
+  accent: '#5a9a6a',
+  accentHover: '#6aaa7a',
+  accentLight: '#25382b',
+  accentBg: '#1d2e22',
 
-  danger: '#af655a',
-  dangerHover: '#b87e75',
-  dangerLight: '#2a1f1e',
-  warning: '#a68c59',
-  warningLight: '#2b261c',
-  success: '#5a8c6f',
-  successLight: '#19241e',
+  // Status colors
+  danger: '#bc7a70',
+  dangerHover: '#c88c82',
+  dangerLight: '#2e2321',
+  warning: '#b99c5a',
+  warningLight: '#2d2a1e',
+  success: '#65a277',
+  successLight: '#1c2e22',
 
-  sidebarBg: '#151816',
-  panelBg: '#1c201d',
-  gridItemBg: '#1e2420',
-  dropdownBg: '#1e2420',
-  modalBg: '#1c201d',
-  scrollbarTrack: '#1e2420',
-  emptyState: '#798078',
-  ratingStar: '#b69854',
-  favStar: '#b69854',
-  colorLabelRed: '#b36256',
-  colorLabelYellow: '#b2944d',
-  colorLabelGreen: '#568f6e',
-  colorLabelBlue: '#7994af',
-  colorLabelPurple: '#907ea9',
+  // Specific surfaces
+  sidebarBg: '#171d1a',
+  panelBg: '#222a25',
+  gridItemBg: '#252d28',
+  dropdownBg: '#242c27',
+  modalBg: '#222a25',
+  scrollbarTrack: '#252d28',
+  emptyState: '#a1aba3',
+  ratingStar: '#cfb262',
+  favStar: '#cfb262',
+  colorLabelRed: '#bc7a70',
+  colorLabelYellow: '#b99c5a',
+  colorLabelGreen: '#65a277',
+  colorLabelBlue: '#7c9fb3',
+  colorLabelPurple: '#9990b3',
 
-  activeBg: '#2a312d',
-  selectedBg: '#1c2620',
-  disabledOpacity: 0.42,
+  // Interaction states
+  activeBg: '#333b36',
+  selectedBg: '#25382b',
+  disabledOpacity: 0.38,
   isDark: true,
-};
-
+}
 // "Graphite Gold" — deep graphite with barely-gold accent (15%)
 const graphiteGoldTheme = {
   bgPrimary: '#0f1011',
   bgSecondary: '#16181a',
-  bgTertiary: '#1e2125',
+  bgTertiary: '#16181a',
   bgCard: '#181b1e',
   bgHover: '#262a2f',
   bgOverlay: 'rgba(6,7,8,0.76)',
@@ -215,18 +221,18 @@ const graphiteGoldTheme = {
   bgPhotoStage: '#090a0b',
   bgPhotoSurface: '#121417',
 
-  border: '#2e3238',
-  borderLight: '#202428',
+  border: '#3e4248',
+  borderLight: 'transparent',
   borderFocus: '#9a8c64',
 
   textPrimary: '#edf0f2',
-  textSecondary: '#c1c7ce',
-  textTertiary: '#7a848e',
+  textSecondary: '#cdd2d7',
+  textTertiary: '#8f98a0',
   textInverse: '#0c0e10',
 
   accent: '#9a8c64',
   accentHover: '#ad9e78',
-  accentLight: '#232018',
+  accentLight: '#302d25',
   accentBg: '#191710',
 
   danger: '#c8746c',
@@ -237,13 +243,13 @@ const graphiteGoldTheme = {
   success: '#6fa87c',
   successLight: '#17241c',
 
-  sidebarBg: '#121417',
+  sidebarBg: '#090a0b',
   panelBg: '#16191c',
   gridItemBg: '#171b1f',
   dropdownBg: '#181b1f',
   modalBg: '#16191c',
   scrollbarTrack: '#181b1f',
-  emptyState: '#7a848e',
+  emptyState: '#8f98a0',
   ratingStar: '#b8995a',
   favStar: '#b8995a',
   colorLabelRed: '#c8746c',
@@ -262,7 +268,7 @@ const graphiteGoldTheme = {
 const slateBlueTheme = {
   bgPrimary: '#0e1116',
   bgSecondary: '#151921',
-  bgTertiary: '#1c222d',
+  bgTertiary: '#151921',
   bgCard: '#171c25',
   bgHover: '#242c39',
   bgOverlay: 'rgba(5,7,10,0.76)',
@@ -270,18 +276,18 @@ const slateBlueTheme = {
   bgPhotoStage: '#090b10',
   bgPhotoSurface: '#11151d',
 
-  border: '#2e3542',
-  borderLight: '#1e2630',
+  border: '#3e4552',
+  borderLight: 'transparent',
   borderFocus: '#6b95b8',
 
   textPrimary: '#ecf0f5',
-  textSecondary: '#c1cbd6',
-  textTertiary: '#778696',
+  textSecondary: '#cdd4dc',
+  textTertiary: '#8e9aaa',
   textInverse: '#0d1116',
 
   accent: '#6b95b8',
   accentHover: '#80a6c4',
-  accentLight: '#18222f',
+  accentLight: '#26303d',
   accentBg: '#121a24',
 
   danger: '#c07074',
@@ -292,13 +298,13 @@ const slateBlueTheme = {
   success: '#6d9e8c',
   successLight: '#16241f',
 
-  sidebarBg: '#11161d',
+  sidebarBg: '#090b10',
   panelBg: '#151a22',
   gridItemBg: '#161c25',
   dropdownBg: '#161b24',
   modalBg: '#151a22',
   scrollbarTrack: '#161c25',
-  emptyState: '#778696',
+  emptyState: '#8e9aaa',
   ratingStar: '#b8935a',
   favStar: '#b8935a',
   colorLabelRed: '#c07074',
@@ -317,7 +323,7 @@ const slateBlueTheme = {
 const merlotTheme = {
   bgPrimary: '#110f10',
   bgSecondary: '#181517',
-  bgTertiary: '#201c1e',
+  bgTertiary: '#181517',
   bgCard: '#1c181a',
   bgHover: '#292326',
   bgOverlay: 'rgba(7,6,6,0.76)',
@@ -325,18 +331,18 @@ const merlotTheme = {
   bgPhotoStage: '#0b090a',
   bgPhotoSurface: '#131112',
 
-  border: '#352e31',
-  borderLight: '#241e20',
+  border: '#453e41',
+  borderLight: 'transparent',
   borderFocus: '#9a606a',
 
   textPrimary: '#f1ebed',
-  textSecondary: '#d0c2c6',
-  textTertiary: '#8c7e82',
+  textSecondary: '#daced0',
+  textTertiary: '#a19195',
   textInverse: '#0e0c0d',
 
   accent: '#9a606a',
   accentHover: '#ad737d',
-  accentLight: '#241a1d',
+  accentLight: '#31282b',
   accentBg: '#1a1215',
 
   danger: '#c46e6c',
@@ -347,13 +353,13 @@ const merlotTheme = {
   success: '#7e9d80',
   successLight: '#18241b',
 
-  sidebarBg: '#131011',
+  sidebarBg: '#0b090a',
   panelBg: '#181416',
   gridItemBg: '#1b1619',
   dropdownBg: '#1a1517',
   modalBg: '#181416',
   scrollbarTrack: '#1a1517',
-  emptyState: '#8c7e82',
+  emptyState: '#a19195',
   ratingStar: '#b8925a',
   favStar: '#b8925a',
   colorLabelRed: '#c46e6c',
@@ -414,7 +420,7 @@ export function buttonStyles(theme: Theme, variant: 'primary' | 'secondary' | 'g
     case 'primary':
       return { ...base, background: theme.accent, color: theme.textInverse };
     case 'secondary':
-      return { ...base, background: theme.bgTertiary, color: theme.textPrimary };
+      return { ...base, background: theme.bgSecondary, color: theme.textPrimary };
     case 'ghost':
       return { ...base, background: 'transparent', color: theme.textSecondary };
     case 'danger':

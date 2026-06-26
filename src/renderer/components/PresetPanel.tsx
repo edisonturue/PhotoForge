@@ -115,11 +115,11 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
 
   const handleImportPresetFile = async () => {
     const result = await window.photoForge.openFileDialog({
-      title: lang === 'zh-CN' ? '导入预设文件' : 'Import Preset File',
+      title: tr('presets.importFile'),
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: lang === 'zh-CN' ? '预设文件' : 'Preset files', extensions: ['ncp','xmp','lrtemplate','dcp','icc','c1','fpx'] },
-        { name: lang === 'zh-CN' ? '所有文件' : 'All files', extensions: ['*'] }
+        { name: tr('presets.presetFiles'), extensions: ['ncp','xmp','lrtemplate','dcp','icc','c1','fpx'] },
+        { name: tr('presets.allFiles'), extensions: ['*'] }
       ]
     });
     if (result.canceled || !result.filePaths.length) return;
@@ -160,7 +160,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
   const handleExportPreset = async (preset: Preset) => {
     const fileName = preset.name.replace(/[^a-zA-Z0-9一-鿿-_]/g, '_') + '.json';
     const result = await window.photoForge.saveFileDialog({
-      title: lang === 'zh-CN' ? '导出预设' : 'Export Preset',
+      title: tr('presets.exportPreset'),
       defaultPath: fileName,
       filters: [{ name: 'JSON', extensions: ['json'] }]
     });
@@ -177,12 +177,12 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
         <div style={s(t).header}>
           <button style={s(t).backArrowBtn} onClick={() => { setCurrentView('presets'); setDetailPreset(null); }}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="back" size={14} color={t.textSecondary} /></button>
           <span style={s(t).title}>{p.name}</span>
           <button style={s(t).closeBtn} onClick={onClose}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="close" size={14} color={t.textSecondary} /></button>
         </div>
         <div style={s(t).detailBody}>
@@ -209,7 +209,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
                   <span style={{ color: t.textSecondary }}>{label}</span>
                   <span style={{ color: t.textPrimary, fontWeight: 500 }}>{val > 0 ? '+' : ''}{a.key === 'gamma' ? val.toFixed(2) : val}{a.unit}</span>
                 </div>
-                <div style={{ height: 3, background: t.bgTertiary, borderRadius: 2, marginTop: 2 }}>
+                <div style={{ height: 3, background: t.bgSecondary, borderRadius: 2, marginTop: 2 }}>
                   <div style={{ height: '100%', width: `${barPct}%`, background: val >= 0 ? t.accent : t.warning, borderRadius: 2, transition: `width ${DURATION.normal}ms ${EASING.out}` }} />
                 </div>
               </div>
@@ -352,7 +352,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
         </div>
         <button style={s(t).closeBtn} onClick={onClose}
           onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-          onMouseLeave={e => { e.currentTarget.style.background = t.bgTertiary; }}
+          onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
         ><AppIcon name="close" size={14} color={t.textSecondary} /></button>
       </div>
 
@@ -405,7 +405,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
       <div style={s(t).presetList}>
         {!activePhoto && selectedCount > 0 && (
           <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.accentLight, borderRadius: 12, marginBottom: SPACING.sm, fontSize: TYPO.caption.size, color: t.accent, textAlign: 'center' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={12} color={t.accent} />{lang === 'zh-CN' ? `点击预设将应用到 ${selectedCount} 张选中照片` : `Click preset to apply to ${selectedCount} selected`}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={12} color={t.accent} />{tr('presets.applyHint').replace('{count}', String(selectedCount))}</span>
           </div>
         )}
         {filteredPresets.length === 0 && (
@@ -454,7 +454,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
               <button
                 style={{ ...s(t).moreBtn, opacity: isHovered ? 1 : 0.5 }}
                 onClick={(e) => { e.stopPropagation(); setDetailPreset(preset); setCurrentView('detail'); }}
-                title={lang === 'zh-CN' ? '查看详情' : 'Details'}
+                title={tr('presets.details')}
               ><AppIcon name="info" size={12} color={t.textTertiary} /></button>
             </div>
           );
@@ -489,7 +489,7 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   panel: { width: 328, margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.lg}px 0`, background: t.panelBg, borderRadius: 18, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden', boxShadow: '0 18px 40px rgba(0,0,0,0.28)' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.md}px`, boxShadow: 'none', background: t.panelBg },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.lg}px ${SPACING.md}px ${SPACING.md}px`, boxShadow: 'none', background: t.panelBg },
   eyebrow: { fontSize: TYPO.tiny.size, color: t.accent, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 2 },
   title: { fontSize: TYPO.subheading.size, color: t.textPrimary, fontWeight: 700, display: 'block' },
   closeBtn: { width: 30, height: 30, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: TRANSITION.all, boxShadow: 'none' },
@@ -509,19 +509,19 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   presetName: { fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 },
   presetMfr: { fontSize: 9, color: t.textTertiary, marginTop: 2, letterSpacing: 0.2 },
   moreBtn: { width: 24, height: 24, border: 'none', borderRadius: 10, background: t.bgSecondary, color: t.textTertiary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: TRANSITION.all } as React.CSSProperties,
-  footer: { padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgSecondary },
-  createBtn: { flex: 1, padding: SPACING.sm, border: 'none', borderRadius: 12, background: t.bgTertiary, color: t.textTertiary, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all },
+  footer: { padding: `${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary },
+  createBtn: { flex: 1, padding: SPACING.sm, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textTertiary, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all },
   importBtn: { flex: 1, padding: SPACING.sm, border: 'none', borderRadius: 12, background: t.accentLight, color: t.accent, cursor: 'pointer', fontSize: TYPO.small.size, fontWeight: 600, transition: TRANSITION.all },
   input: { flex: 1, padding: `${SPACING.sm}px ${SPACING.sm}px`, border: `1px solid ${t.border}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none' },
   saveBtn: { padding: `${SPACING.sm}px ${SPACING.lg}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all, fontWeight: 600 },
   cancelSmBtn: { padding: `${SPACING.sm}px ${SPACING.sm}px`, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all, boxShadow: 'none' },
-  detailBody: { flex: 1, overflowY: 'auto', padding: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.xl}px` },
+  detailBody: { flex: 1, overflowY: 'auto', padding: `${SPACING.lg}px ${SPACING.md}px ${SPACING.xl}px` },
   detailThumbWrap: { width: '100%', height: 108, borderRadius: 14, overflow: 'hidden', background: t.bgPhotoStage, marginBottom: SPACING.md },
   detailThumbImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   actionFullBtn: { width: '100%', padding: SPACING.sm, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.small.size, fontWeight: 500, transition: TRANSITION.all },
   selectAndImportBtn: { width: '100%', padding: `${SPACING.md}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600, marginBottom: SPACING.sm, transition: TRANSITION.all },
   backBtn: { width: '100%', padding: SPACING.sm, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all },
-  importResultCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.md}px ${SPACING.lg}px`, marginBottom: SPACING.sm, background: t.bgCard, borderRadius: 12 },
+  importResultCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.md}px ${SPACING.md}px`, marginBottom: SPACING.sm, background: t.bgCard, borderRadius: 12 },
   importResultInfo: { flex: 1, minWidth: 0, overflow: 'hidden' },
   goToBtn: { padding: `${SPACING.xs}px ${SPACING.md}px`, border: 'none', borderRadius: RADIUS.sm, background: t.accentLight, color: t.accent, cursor: 'pointer', fontSize: TYPO.tiny.size, whiteSpace: 'nowrap', flexShrink: 0, transition: TRANSITION.all },
 });

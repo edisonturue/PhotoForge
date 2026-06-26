@@ -220,7 +220,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
                 height: 30,
                 borderRadius: 4,
                 overflow: 'hidden',
-                background: t.bgTertiary,
+                background: t.bgSecondary,
                 flexShrink: 0,
               }}>
                 <img

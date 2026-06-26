@@ -113,19 +113,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
   .replace('{width}', '8192')
   .replace('{height}', '5464');
 
- const sectionHeroTitle: string = useMemo(() => {
-  switch (activeSection) {
-   case 'general':   return 'Application Basics';
-   case 'import':    return 'Photo Import Settings';
-   case 'export':    return 'Export Defaults';
-   case 'display':   return 'Photo Browser Display';
-   case 'shortcuts': return 'Keyboard Shortcuts';
-   case 'advanced':  return 'System & Maintenance';
-   case 'logs':      return 'Application Log';
-   case 'about':
-   default:          return 'About PhotoForge';
-  }
- }, [activeSection]);
+  const heroKeyMap: Record<string, string> = {
+    general: 'settings.heroGeneral', import: 'settings.heroImport',
+    export: 'settings.heroExport', display: 'settings.heroDisplay',
+    shortcuts: 'settings.heroShortcuts', advanced: 'settings.heroAdvanced',
+    logs: 'settings.heroLogs', about: 'settings.heroAbout',
+  };
+  const sectionHeroTitle: string = tr(heroKeyMap[activeSection] ?? 'settings.heroAbout');
 
  return (
   <div style={styles.container(t)}>
@@ -138,14 +132,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
       </span>
      </button>
      <div>
-      <div style={styles.headerEyebrow(t)}>Control Room</div>
+      <div style={styles.headerEyebrow(t)}>{tr("settings.headerEyebrow")}</div>
       <div style={styles.headerTitle(t)}>{tr('settings.title')}</div>
      </div>
     </div>
     <div style={styles.saveState(t, saved)}>
      <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
       <AppIcon name={saved ? 'check' : 'dot'} size={12} color={saved ? t.success : t.textTertiary} />
-      {saved ? tr('settings.saved') : 'Ready'}
+      {saved ? tr('settings.saved') : tr('settings.ready')}
      </span>
     </div>
    </div>
@@ -153,8 +147,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
    <div style={styles.body}>
     <aside style={styles.sidebar(t)}>
      <div style={styles.sidebarTop(t)}>
-      <div style={styles.sidebarBadge(t)}>Studio</div>
-      <div style={styles.sidebarHeading(t)}>Preferences</div>
+      <div style={styles.sidebarBadge(t)}>{tr("settings.sidebarBadge")}</div>
+      <div style={styles.sidebarHeading(t)}>{tr("settings.sidebarHeading")}</div>
 
      </div>
 
@@ -238,12 +232,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
          </FieldCard>
          <FieldCard
           theme={t}
-          label="Library behavior"
+          label={tr("settings.libraryBehavior")}
                    >
           <div style={styles.metricRow(t)}>
            <div style={styles.metricPill(t)}>
-            <span style={styles.metricNumber(t)}>{settings.importMode === 'copy' ? 'Managed' : 'Linked'}</span>
-            <span style={styles.metricLabel(t)}>{settings.importMode === 'copy' ? 'Originals duplicated into the library.' : 'Originals remain in place.'}</span>
+            <span style={styles.metricNumber(t)}>{settings.importMode === 'copy' ? 'Managed' : tr('settings.linked')}</span>
+            <span style={styles.metricLabel(t)}>{settings.importMode === 'copy' ? 'Originals duplicated into the library.' : tr('settings.linkedDesc')}</span>
            </div>
           </div>
          </FieldCard>
@@ -294,7 +288,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
            <span style={styles.previewValue(t)}>{namingPreview}.jpg</span>
           </div>
          </FieldCard>
-         <FieldCard theme={t} label="Export behavior">
+         <FieldCard theme={t} label={tr("settings.exportBehavior")}>
           <ToggleRow theme={t} label={tr('settings.preserveExif')} hint={tr('settings.preserveExifHint')}>
            <input type="checkbox" checked={settings.preserveExif} onChange={e => update({ preserveExif: e.target.checked })} />
           </ToggleRow>
@@ -355,7 +349,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           ['⌘⇧Z', tr('shortcuts.redo')],
           ['⌘F', tr('shortcuts.search')],
           ['⌫', tr('shortcuts.delete')],
-          ['Arrow Left / Right', tr('shortcuts.navigate')],
+          ['← / →', tr('shortcuts.navigate')],
          ].map(([key, desc]) => (
           <div key={key} style={styles.shortcutRow(t)}>
            <span style={styles.shortcutText(t)}>{desc}</span>
@@ -528,7 +522,7 @@ const styles = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: '18px 24px 16px',
+  padding: '18px 12px 16px',
   background: t.bgPrimary,
   boxShadow: 'none',
   gap: SPACING.md,
@@ -764,7 +758,7 @@ const styles = {
   width: '100%',
   minHeight: 40,
   padding: '10px 14px',
-  border: `1px solid ${t.borderLight}`,
+  border: `1px solid ${t.border}`,
   borderRadius: 12,
   background: t.bgInput,
   color: t.textPrimary,
@@ -776,7 +770,7 @@ const styles = {
   width: '100%',
   minHeight: 40,
   padding: '10px 14px',
-  border: `1px solid ${t.borderLight}`,
+  border: `1px solid ${t.border}`,
   borderRadius: 12,
   background: t.bgInput,
   color: t.textPrimary,
@@ -877,7 +871,7 @@ const styles = {
   padding: `${SPACING.md}px ${SPACING.lg}px`,
   borderRadius: 14,
   background: t.bgSecondary,
-  border: `1px solid ${t.borderLight}`,
+  border: `1px solid ${t.border}`,
  }),
  shortcutText: (t: Theme): React.CSSProperties => ({
   fontSize: TYPO.body.size,
@@ -891,7 +885,7 @@ const styles = {
  actionBtn: (t: Theme): React.CSSProperties => ({
   padding: `${SPACING.sm}px ${SPACING.lg}px`,
   borderRadius: 12,
-  background: t.bgTertiary,
+  background: t.bgSecondary,
   color: t.textPrimary,
   cursor: 'pointer',
   fontSize: TYPO.body.size,
@@ -1154,13 +1148,13 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
       value={searchQuery}
       onChange={e => setSearchQuery(e.target.value)}
      />
-     <button style={styles.logActionBtn(t)} onClick={handleRefresh} aria-label="Refresh logs">
+     <button style={styles.logActionBtn(t)} onClick={handleRefresh} aria-label={tr("settings.refreshLogs")}>
       <AppIcon name="refresh" size={14} color={t.textPrimary} />
      </button>
-     <button style={styles.logActionBtn(t)} onClick={handleOpenDir} aria-label="Open logs folder">
+     <button style={styles.logActionBtn(t)} onClick={handleOpenDir} aria-label={tr("settings.openLogsFolder")}>
       <AppIcon name="folder" size={14} color={t.textPrimary} />
      </button>
-     <button style={{ ...styles.logActionBtn(t), background: t.dangerLight, borderColor: t.danger }} onClick={handleClear} aria-label="Clear logs">
+     <button style={{ ...styles.logActionBtn(t), background: t.dangerLight, borderColor: t.danger }} onClick={handleClear} aria-label={tr("settings.clearLogs")}>
       <AppIcon name="trash" size={14} color={t.danger} />
      </button>
     </div>

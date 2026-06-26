@@ -284,7 +284,7 @@ const styles = {
     fontSize: TYPO.subheading.size,
     fontWeight: 700,
     color: t.textPrimary,
-    padding: `${SPACING.lg}px ${SPACING.lg}px 0`,
+    padding: 0,
     marginBottom: SPACING.md,
   }),
   scrollArea: (t: Theme): React.CSSProperties => ({
@@ -320,7 +320,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    background: active ? t.bgPrimary : t.bgTertiary,
+    background: active ? t.bgPrimary : t.bgSecondary,
     flexShrink: 0,
   }),
   favoriteLabel: (t: Theme, active: boolean): React.CSSProperties => ({

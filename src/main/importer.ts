@@ -91,7 +91,7 @@ export class PhotoImporter {
           width: metadata.width || 0,
           height: metadata.height || 0,
           dateTaken: metadata.dateTaken || null,
-          dateModified: new Date().toISOString(),
+          dateModified: (await stat(filePath)).mtime.toISOString(),
           cameraModel: metadata.cameraModel || null,
           lensModel: metadata.lensModel || null,
           iso: metadata.iso || null,
