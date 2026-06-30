@@ -75,14 +75,14 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({ photos, onBack, 
           </span>
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={styles.eyebrow(t)}>Library Overview</div>
+          <div style={styles.eyebrow(t)}>{tr('stats.eyebrow')}</div>
           <h2 style={styles.pageTitle(t)}>{tr('stats.title')}</h2>
         </div>
       </div>
 
 
       {/* Scrollable analytics */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 }}>
       <section style={styles.metricsGrid}>
         <MetricCard theme={t} icon="camera" label={tr('stats.totalPhotos')} value={String(photos.length)} />
         <MetricCard theme={t} icon="folder" label={tr('stats.totalSize')} value={formatBytes(stats.totalSize)} />

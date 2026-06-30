@@ -233,7 +233,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   exportFormat: 'jpg',
   exportQuality: 95,
   thumbnailSize: 400,
-  theme: 'vintage',
+  theme: 'graphite-gold',
   showFileExtensions: false,
   libraryPath: null,
   checkMissingFiles: true,

@@ -346,8 +346,8 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
   return (
     <div style={s(t).panel}>
       <div style={s(t).header}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={s(t).eyebrow}>Preset Studio</div>
+        <div style={{ flex: 1, minWidth: 0, paddingLeft: SPACING.sm }}>
+          <div style={s(t).eyebrow}>{tr('presets.studio')}</div>
           <span style={s(t).title}>{tr('presets.title')}</span>
         </div>
         <button style={s(t).closeBtn} onClick={onClose}
@@ -358,14 +358,14 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
 
       {/* Search bar */}
       <div style={{ padding: `${SPACING.md}px ${SPACING.md}px ${SPACING.sm}px`, background: t.panelBg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs, background: t.bgSecondary, borderRadius: 12, padding: `0 ${SPACING.sm}px`, boxShadow: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: t.bgSecondary, borderRadius: 12, padding: `0 ${SPACING.sm}px`, boxShadow: 'none' }}>
           <span style={{ color: t.textTertiary, marginRight: 2, display: 'inline-flex' }}><AppIcon name="search" size={13} color={t.textTertiary} /></span>
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={tr('presets.searchPlaceholder')}
-            style={{ flex: 1, border: 'none', background: 'transparent', color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', padding: `${SPACING.sm}px 0`, lineHeight: '24px' }}
+            style={{ flex: 1, border: 'none', background: 'transparent', color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', padding: `${SPACING.sm}px ${SPACING.xs}px`, lineHeight: '24px' }}
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: t.textTertiary, cursor: 'pointer', fontSize: 14, padding: 2 }}><AppIcon name="close" size={12} color={t.textTertiary} /></button>
@@ -488,19 +488,19 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
 };
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
-  panel: { width: 328, margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.lg}px 0`, background: t.panelBg, borderRadius: 18, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden', boxShadow: '0 18px 40px rgba(0,0,0,0.28)' },
+  panel: { width: 328, margin: `${SPACING.lg}px ${SPACING.md}px ${SPACING.lg}px 0`, background: t.panelBg, borderRadius: 18, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden', boxShadow: '0 18px 40px rgba(0,0,0,0.28)' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.lg}px ${SPACING.md}px ${SPACING.md}px`, boxShadow: 'none', background: t.panelBg },
   eyebrow: { fontSize: TYPO.tiny.size, color: t.accent, letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 2 },
   title: { fontSize: TYPO.subheading.size, color: t.textPrimary, fontWeight: 700, display: 'block' },
   closeBtn: { width: 30, height: 30, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: TRANSITION.all, boxShadow: 'none' },
   backArrowBtn: { width: 30, height: 30, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: TRANSITION.all, boxShadow: 'none' } as React.CSSProperties,
-  catTabs: { display: 'flex', flexWrap: 'wrap', gap: 6, padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary },
+  catTabs: { display: 'flex', flexWrap: 'wrap', gap: SPACING.xs, padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary },
   catBtn: { padding: `5px ${SPACING.sm}px`, border: 'none', borderRadius: 999, fontSize: TYPO.tiny.size, cursor: 'pointer', whiteSpace: 'nowrap', transition: TRANSITION.all },
-  presetList: { flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.sm}px ${SPACING.md}px` },
+  presetList: { flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px` },
   presetCard: {
     display: 'flex', alignItems: 'center', gap: SPACING.sm, background: t.bgCard,
     borderRadius: 16, cursor: 'pointer', border: 'none',
-    overflow: 'hidden', marginBottom: SPACING.xs, padding: `${SPACING.xs}px ${SPACING.sm}px`,
+    overflow: 'hidden', marginBottom: SPACING.sm, padding: `${SPACING.xs}px ${SPACING.sm}px`,
     transition: `background ${DURATION.fast}ms ${EASING.out}, border-color ${DURATION.fast}ms ${EASING.out}, box-shadow ${DURATION.fast}ms ${EASING.out}, transform ${DURATION.fast}ms ${EASING.out}`,
   },
   presetThumbWrap: { width: 64, height: 44, flexShrink: 0, borderRadius: 10, overflow: 'hidden', background: t.bgPhotoStage },

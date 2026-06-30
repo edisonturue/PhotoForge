@@ -6,6 +6,7 @@ import { AppIcon } from './AppIcon';
 
 interface DateGroupViewProps {
   photos: PhotoFile[];
+  onSelect: (id: string, multi?: boolean, shift?: boolean) => void;
   onSelectPhoto: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   selectedIds: Set<string>;
@@ -20,15 +21,28 @@ interface DateGroup {
   photos: PhotoFile[];
 }
 
-export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPhoto, onToggleFavorite, selectedIds, theme: t }) => {
+export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelect, onSelectPhoto, onToggleFavorite, selectedIds, theme: t }) => {
   const { t: tr, lang } = useI18n();
   const [groupMode, setGroupMode] = useState<GroupMode>('month');
+
+  // Safe date parser — handles null/undefined/invalid dates gracefully
+  const safeDate = (photo: PhotoFile): Date => {
+    if (photo.dateTaken) {
+      const d = new Date(photo.dateTaken);
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (photo.dateModified) {
+      const d = new Date(photo.dateModified);
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date(); // fallback to now
+  };
 
   const groups = useMemo((): DateGroup[] => {
     const map = new Map<string, PhotoFile[]>();
 
     for (const photo of photos) {
-      const date = photo.dateTaken ? new Date(photo.dateTaken) : new Date(photo.dateModified);
+      const date = safeDate(photo);
       let key: string;
       let label: string;
 
@@ -61,7 +75,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
       .map(([key, photos]) => ({ dateKey: key, label: key, photos }))
       .map((group, _, arr) => {
         // Recalculate label properly
-        const date = group.photos[0]?.dateTaken ? new Date(group.photos[0].dateTaken) : new Date(group.photos[0].dateModified);
+        const date = safeDate(group.photos[0]);
         let label: string;
         switch (groupMode) {
           case 'day':
@@ -110,7 +124,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
       </div>
 
       {/* Scrollable groups */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 }}>
       {/* Groups */}
       {groups.map(group => (
         <div key={group.dateKey} style={{ marginBottom: SPACING.xl }}>
@@ -131,7 +145,8 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
                 background: t.bgCard, transition: `box-shadow ${DURATION.fast}ms ${EASING.out}, transform ${DURATION.fast}ms ${EASING.out}`,
                 position: 'relative',
               }}
-                onClick={() => onSelectPhoto(photo.id)}
+                onClick={e => { e.stopPropagation(); onSelect(photo.id, e.metaKey || e.ctrlKey, e.shiftKey); }}
+                onDoubleClick={() => onSelectPhoto(photo.id)}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = SHADOW.md; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
@@ -147,7 +162,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelectPh
                     {photo.fileName}
                   </div>
                   <div style={{ fontSize: 9, color: t.textTertiary }}>
-                    {photo.dateTaken ? new Date(photo.dateTaken).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    {(() => { try { if (!photo.dateTaken) return ''; const d = new Date(photo.dateTaken); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })()}
                     {' '}{photo.cameraModel || ''}
                   </div>
                 </div>

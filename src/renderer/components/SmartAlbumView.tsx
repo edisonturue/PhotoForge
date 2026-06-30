@@ -3,6 +3,7 @@ import { PhotoFile, FilterCriteria, Collection } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { DateGroupView } from './DateGroupView';
 
 interface SmartAlbumViewProps {
   photos: PhotoFile[];
@@ -39,6 +40,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'name' | 'description' | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [dateGroupMode, setDateGroupMode] = useState(false);
 
   // Pre-built smart albums based on criteria
   const smartAlbums = useMemo(() => {
@@ -79,7 +81,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
 
   // Show album content
   const activeAlbum = activeAlbumId ? smartAlbums.find((_, idx) => idx.toString() === activeAlbumId) : null;
-  if (activeAlbum) {
+  if (activeAlbum || dateGroupMode) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage }}>
         {/* Sticky header */}
@@ -89,26 +91,30 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
             borderRadius: RADIUS.sm, background: t.bgSecondary, color: t.textPrimary,
             cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all,
           }}
-            onClick={() => setActiveAlbumId(null)}
+            onClick={() => { setActiveAlbumId(null); setDateGroupMode(false); }}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="back" size={14} color={t.textPrimary} />{tr('smartAlbum.back')}</span></button>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: RADIUS.pill, background: t.accentBg, color: t.accent }}>{activeAlbum.icon}</span>
+          {dateGroupMode ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: RADIUS.pill, background: t.accentBg, color: t.accent }}><AppIcon name="calendar" size={22} /></span>
+          ) : activeAlbum && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: RADIUS.pill, background: t.accentBg, color: t.accent }}>{activeAlbum.icon}</span>
+          )}
           <h2 style={{ margin: 0, fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary }}>
-            {lang === 'zh-CN' ? activeAlbum.nameZh : activeAlbum.name}
+            {dateGroupMode ? tr('toolbar.dateGroup') : (lang === 'zh-CN' ? activeAlbum?.nameZh : activeAlbum?.name)}
           </h2>
           <span style={{ fontSize: TYPO.body.size, color: t.textTertiary }}>
-            {activeAlbum.count} {tr('grid.photoCount')}
+            {(dateGroupMode ? photos.length : activeAlbum?.count) || 0} {tr('grid.photoCount')}
           </span>
         </div>
-        {/* Sticky grid size controls */}
+        {!dateGroupMode && (
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: `${SPACING.sm}px ${SPACING.lg}px`, background: t.bgPhotoStage,
           borderBottom: `1px solid ${t.borderLight}`, flexShrink: 0,
         }}>
           <span style={{ fontSize: TYPO.body.size, color: t.textSecondary }}>
-            {activeAlbum.count} {tr('grid.photoCount')}
+            {activeAlbum?.count || 0} {tr('grid.photoCount')}
           </span>
           <div style={{ display: 'flex', gap: SPACING.xs }}>
             {(['small', 'medium', 'large'] as const).map(size => (
@@ -122,30 +128,35 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
             ))}
           </div>
         </div>
+        )}
         {/* Scrollable photos */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${gridColWidth}px, 1fr))`, gap: SPACING.md }}>
-          {activeAlbum.photos.map(photo => (
-            <div key={photo.id} style={{
-              borderRadius: RADIUS.sm, overflow: 'hidden', cursor: 'pointer',
-              background: t.bgCard,
-              transition: `box-shadow ${DURATION.fast}ms ${EASING.out}`,
-            }}
-              onClick={() => onSelectPhoto(photo.id)}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = SHADOW.md; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: t.bgSecondary }}>
-                <img src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" alt="" />
+        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 }}>
+        {dateGroupMode ? (
+          <DateGroupView photos={photos} onSelect={() => {}} onSelectPhoto={onSelectPhoto} onToggleFavorite={() => {}} selectedIds={new Set<string>()} theme={t} />
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${gridColWidth}px, 1fr))`, gap: SPACING.md }}>
+            {activeAlbum && activeAlbum.photos.map(photo => (
+              <div key={photo.id} style={{
+                borderRadius: RADIUS.sm, overflow: 'hidden', cursor: 'pointer',
+                background: t.bgCard,
+                transition: `box-shadow ${DURATION.fast}ms ${EASING.out}`,
+              }}
+                onClick={() => onSelectPhoto(photo.id)}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = SHADOW.md; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: t.bgSecondary }}>
+                  <img src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" alt="" />
+                </div>
+                <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px` }}>
+                  <div style={{ fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.fileName}</div>
+                  <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {photo.cameraModel || '—'}</div>
+                </div>
               </div>
-              <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px` }}>
-                <div style={{ fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.fileName}</div>
-                <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {photo.cameraModel || '—'}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         </div>
       </div>
     );
@@ -160,10 +171,25 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
         </h2>
       </div>
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 }}>
 
       {/* Built-in smart albums */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: SPACING.lg, marginBottom: SPACING.xxl }}>
+        {/* Date Group card */}
+        <div style={{
+          background: t.bgSecondary, borderRadius: RADIUS.md,
+          padding: SPACING.lg, cursor: 'pointer',
+          transition: 'box-shadow 150ms ease-out, transform 150ms ease-out',
+        }}
+          onClick={() => setDateGroupMode(true)}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 18px 34px rgba(0,0,0,0.22)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 12px 28px rgba(0,0,0,0.16)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, marginBottom: SPACING.sm, borderRadius: RADIUS.pill, background: t.accentBg, color: t.accent }}><AppIcon name="calendar" size={22} /></div>
+          <div style={{ fontSize: TYPO.subheading.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.xs }}>{tr('toolbar.dateGroup')}</div>
+          <div style={{ fontSize: TYPO.display.size, fontWeight: 700, color: t.accent }}>{photos.length}</div>
+          <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{tr('grid.photoCount')}</div>
+        </div>
         {smartAlbums.map((album, idx) => (
           <div key={idx} style={{
             background: t.bgSecondary, borderRadius: RADIUS.md,
@@ -277,7 +303,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
                   col.description && <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginTop: SPACING.xs }}>{col.description}</div>
                 )}
               </div>
-            ))}
+            ))})
           </div>
         </>
       )}

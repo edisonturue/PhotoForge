@@ -26,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
     labels: true,
     cameras: true,
   });
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
   const stats = useMemo(() => {
     const formatCounts: Record<string, number> = {};
@@ -112,7 +113,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
           expanded={expanded.recentImports}
           onToggle={() => setExpanded(prev => ({ ...prev, recentImports: !prev.recentImports }))}
         >
-          {recentImports.slice(0, 5).map(batch => {
+          {recentImports.filter(batch => batch.photoIds.some(id => photos.some(p => p.id === id))).slice(0, 5).map(batch => {
+            const validPhotoIds = batch.photoIds.filter(id => photos.some(p => p.id === id));
             const date = new Date(batch.timestamp);
             const dateStr = date.toLocaleDateString(lang === 'zh-CN' ? 'zh-CN' : 'en-US', {
               month: 'short',
@@ -120,10 +122,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
               hour: '2-digit',
               minute: '2-digit',
             });
-            const label = tr('sidebar.importBatch').replace('{date}', dateStr).replace('{count}', String(batch.count));
+            const label = tr("sidebar.importBatch").replace("{date}", dateStr).replace("{count}", String(validPhotoIds.length));
+            const activeBatch = selectedBatchId === batch.id;
             return (
-              <button key={batch.id} style={styles.rowBtn(t)} onClick={() => onSelectBatch?.(batch.photoIds)}>
+              <button key={batch.id} style={styles.rowBtn(t, activeBatch)} onClick={() => { setSelectedBatchId(batch.id); onSelectBatch?.(validPhotoIds); }}>
                 <span style={styles.rowLabel(t)}>{label}</span>
+                <span style={styles.rowCount(t, activeBatch)}>{validPhotoIds.length}</span>
               </button>
             );
           })}
@@ -270,7 +274,7 @@ const styles = {
     width: SIDEBAR_WIDTH,
     minWidth: SIDEBAR_WIDTH,
     background: t.sidebarBg,
-    padding: `${SPACING.md}px`,
+    padding: `${SPACING.md}px 0`,
     display: 'flex',
     flexDirection: 'column',
     gap: SPACING.md,
@@ -284,7 +288,7 @@ const styles = {
     fontSize: TYPO.subheading.size,
     fontWeight: 700,
     color: t.textPrimary,
-    padding: 0,
+    padding: `0 ${SPACING.lg}px`,
     marginBottom: SPACING.md,
   }),
   scrollArea: (t: Theme): React.CSSProperties => ({
@@ -326,6 +330,7 @@ const styles = {
   favoriteLabel: (t: Theme, active: boolean): React.CSSProperties => ({
     display: 'block',
     fontSize: TYPO.body.size,
+    lineHeight: 1.3,
     fontWeight: 600,
     color: active ? t.textPrimary : t.textSecondary,
     marginBottom: 2,
@@ -341,6 +346,7 @@ const styles = {
     background: active ? t.bgPrimary : t.bgSecondary,
     color: active ? t.accent : t.textSecondary,
     fontSize: TYPO.caption.size,
+    lineHeight: 1.3,
     fontWeight: 600,
     flexShrink: 0,
   }),
@@ -391,15 +397,15 @@ const styles = {
   sectionBody: {
     display: 'flex',
     flexDirection: 'column',
-    gap: SPACING.xs,
-    padding: `0 ${SPACING.sm}px ${SPACING.sm}px`,
+    gap: SPACING.sm,
+    padding: `${SPACING.sm}px ${SPACING.lg}px ${SPACING.sm}px`,
   } as React.CSSProperties,
   rowBtn: (t: Theme, active = false): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
     gap: SPACING.sm,
     width: '100%',
-    padding: `${SPACING.sm}px ${SPACING.md}px`,
+    padding: `${SPACING.sm}px ${SPACING.lg}px`,
     borderRadius: 12,
     border: `1px solid ${active ? t.accent : 'transparent'}`,
     background: active ? t.accentBg : 'transparent',
@@ -412,6 +418,7 @@ const styles = {
     flex: 1,
     minWidth: 0,
     fontSize: TYPO.body.size,
+    lineHeight: 1.3,
     fontWeight: active ? 600 : 400,
     color: active ? t.textPrimary : t.textSecondary,
   }),
@@ -420,6 +427,7 @@ const styles = {
     minWidth: 24,
     textAlign: 'right',
     fontSize: TYPO.caption.size,
+    lineHeight: 1.3,
     color: active ? t.accent : t.textTertiary,
   }),
 };

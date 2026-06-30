@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
-import { PhotoFile, FilterCriteria, SortCriteria, Preset, ImportProgress, AppSettings, DEFAULT_SETTINGS, ImportBatch, Collection } from '../shared/types';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { PhotoFile, FilterCriteria, SortCriteria, Preset, ImportProgress, AppSettings, DEFAULT_SETTINGS, ImportBatch, Collection, ImportResult } from '../shared/types';
 import { Sidebar, SIDEBAR_WIDTH } from './components/Sidebar';
 import { PhotoGrid } from './components/PhotoGrid';
 import { PhotoDetail } from './components/PhotoDetail';
@@ -18,7 +18,7 @@ import { AppIcon } from './components/AppIcon';
 import { usePhotos } from './hooks/usePhotos';
 import { usePresets } from './hooks/usePresets';
 import { useHistory, createUpdateEntry, createBatchEntry } from './hooks/useHistory';
-import { getTheme, Theme, SPACING, RADIUS, SHADOW, TYPO, DURATION, EASING, TRANSITION } from './styles/theme';
+import { getTheme, Theme, SPACING, RADIUS, SHADOW, TYPO, DURATION, EASING, TRANSITION, COMPONENT_HEIGHT } from './styles/theme';
 import { KEYFRAMES } from './styles/design-tokens';
 import { useI18n } from './i18n';
 
@@ -26,17 +26,29 @@ import { useI18n } from './i18n';
 type Module = 'browse' | 'edit' | 'albums' | 'statistics' | 'presets' | 'settings' | 'compare' | 'dategroup';
 
 function injectKeyframes() {
-  const style = document.createElement('style');
+  let style = document.getElementById('photoforge-keyframes') as HTMLStyleElement;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'photoforge-keyframes';
+    document.head.appendChild(style);
+  }
   style.textContent = Object.values(KEYFRAMES).join('\n');
-  document.head.appendChild(style);
 }
 
 function injectGlobalChrome(theme: Theme) {
-  const id = 'photoforge-global-chrome';
+  let style = document.getElementById('photoforge-global-chrome') as HTMLStyleElement;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'photoforge-global-chrome';
+    document.head.appendChild(style);
+  }
   const css = `
     html, body, #root {
       background: ${theme.bgPhotoStage};
       color: ${theme.textPrimary};
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       color-scheme: ${theme.isDark ? 'dark' : 'light'};
     }
     body {
@@ -79,7 +91,7 @@ function injectGlobalChrome(theme: Theme) {
     textarea {
       appearance: none;
       -webkit-appearance: none;
-      border: 1px solid ${theme.borderLight};
+      border: 1px solid ${theme.border};
       background: ${theme.bgInput};
       color: ${theme.textPrimary};
       border-radius: 10px;
@@ -129,19 +141,20 @@ function injectGlobalChrome(theme: Theme) {
     }
     input[type="checkbox"]::after {
       content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      background: ${theme.textInverse};
-      transform: scale(0);
+      width: 5px;
+      height: 9px;
+      border: solid ${theme.accent};
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) scale(0);
       transition: transform ${DURATION.fast}ms ${EASING.out};
+      margin-top: -2px;
     }
     input[type="checkbox"]:checked {
-      background: ${theme.accent};
+      background: ${theme.accentLight};
       border-color: ${theme.accent};
     }
     input[type="checkbox"]:checked::after {
-      transform: scale(1);
+      transform: rotate(45deg) scale(1);
     }
     input[type="range"] {
       appearance: none;
@@ -153,7 +166,7 @@ function injectGlobalChrome(theme: Theme) {
       height: 6px;
       border-radius: 999px;
       background: ${theme.bgSecondary};
-      border: 1px solid ${theme.borderLight};
+      border: 1px solid ${theme.border};
     }
     input[type="range"]::-webkit-slider-thumb {
       appearance: none;
@@ -179,12 +192,6 @@ function injectGlobalChrome(theme: Theme) {
     }
   `;
 
-  let style = document.getElementById(id) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement('style');
-    style.id = id;
-    document.head.appendChild(style);
-  }
   style.textContent = css;
 }
 
@@ -205,11 +212,15 @@ export const App: React.FC = () => {
   const [showImport, setShowImport] = useState(false);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [manageMode, setManageMode] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [missingFiles, setMissingFiles] = useState<Array<{ id: string; fileName: string; filePath: string }>>([]);
   const [recentImports, setRecentImports] = useState<ImportBatch[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const importCompletedRef = useRef(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [importSuccessCount, setImportSuccessCount] = useState(0);
 
   const { toasts, addToast, dismissToast } = useToast();
   const history = useHistory();
@@ -251,25 +262,20 @@ export const App: React.FC = () => {
   useEffect(() => {
     fetchRecentImports();
   }, [fetchRecentImports]);
-  // Safety net: ensure edit module always has an active photo
   useEffect(() => {
-    window.photoForge.onImportProgress((progress: ImportProgress) => {
+    const unsub = window.photoForge.onImportProgress((progress: ImportProgress) => {
       setImportProgress(progress);
-      if (progress.stage === 'complete') {
-        refreshPhotos();
-        fetchRecentImports();
-        addToast('success', t('toast.importComplete'), 3000);
-        setTimeout(() => setImportProgress(null), 2000);
-      }
     });
-  }, [refreshPhotos, addToast, fetchRecentImports]);
+    return () => { unsub(); };
+  }, []);
 
   // ========== Recent Imports & Album Actions ==========
   const handleSelectBatch = useCallback((photoIds: string[]) => {
-    // Set selected IDs to the batch's photos, switch view to show them
-    setSelectedIds(new Set(photoIds));
+    // Only select photos that still exist
+    const validIds = photoIds.filter(id => photos.some(p => p.id === id));
+    setSelectedIds(new Set(validIds));
     setFilter({ ...filter, search: '' });
-  }, [filter]);
+  }, [filter, photos]);
 
   const handleExportAlbum = useCallback(async (photoIds: string[]) => {
     try {
@@ -356,17 +362,44 @@ export const App: React.FC = () => {
     try {
       setSettings(prev => ({ ...prev, importMode }));
       await window.photoForge.updateSettings({ importMode });
-      await window.photoForge.importFiles({ sourcePaths, copyToLibrary: importMode === 'copy', libraryPath: await window.photoForge.getLibraryPath(), generateThumbnails: true, thumbnailSize: settings.thumbnailSize, extractMetadata: true, detectDuplicates: true, fileExtensions: [] });
-      refreshPhotos();
-      setShowImport(false);
+      const result = await window.photoForge.importFiles({ sourcePaths, copyToLibrary: importMode === 'copy', libraryPath: await window.photoForge.getLibraryPath(), generateThumbnails: true, thumbnailSize: settings.thumbnailSize, extractMetadata: true, detectDuplicates: true, fileExtensions: [] });
+      if (result.imported > 0) {
+        importCompletedRef.current = true;
+        // Let ImportModal show success overlay + exit animation, then onClose will refresh
+      } else {
+        // Nothing was imported — close immediately
+        setShowImport(false);
+      }
     } catch (err) {
+      setShowImport(false);
       addToast('error', t('toast.importFailed'), 5000);
     }
-  }, [refreshPhotos, settings, addToast, t]);
+  }, [settings, addToast, t]);
 
-  const handleSelect = useCallback((id: string, multi = false) => {
-    setSelectedIds(prev => { const next = new Set(multi ? prev : []); if (next.has(id) && multi) next.delete(id); else next.add(id); return next; });
-  }, []);
+  // Track last clicked photo index for Shift+click range selection
+  const lastClickedIndexRef = useRef(-1);
+  const handleSelect = useCallback((id: string, multi = false, shift = false) => {
+    setSelectedIds(prev => {
+      if (shift && lastClickedIndexRef.current >= 0) {
+        const currIdx = filteredPhotos.findIndex(p => p.id === id);
+        if (currIdx === -1) return prev;
+        const start = Math.min(lastClickedIndexRef.current, currIdx);
+        const end = Math.max(lastClickedIndexRef.current, currIdx);
+        const next = new Set(prev);
+        for (let i = start; i <= end; i++) {
+          next.add(filteredPhotos[i].id);
+        }
+        return next;
+      }
+      if (multi) {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      }
+      return new Set([id]);
+    });
+    lastClickedIndexRef.current = filteredPhotos.findIndex(p => p.id === id);
+  }, [filteredPhotos]);
   const enterEditMode = useCallback((id: string) => {
     setActivePhotoId(id);
     setActiveModule('edit');
@@ -476,9 +509,10 @@ export const App: React.FC = () => {
       history.pushEntry(entry.action, entry.description, entry.beforeState, entry.afterState, deletedPhotos);
       setSelectedIds(new Set());
       addToast('success', t('toast.deleted').replace('{count}', ids.length.toString()), 3000);
+      await fetchRecentImports();
     }
     catch { addToast('error', t('toast.deleteFailed'), 5000); }
-  }, [selectedIds, photos, deletePhotos, history, addToast, t]);
+  }, [selectedIds, photos, deletePhotos, history, addToast, t, fetchRecentImports]);
 
   const handleUndo = useCallback(async () => {
     const entry = history.undo();
@@ -489,15 +523,17 @@ export const App: React.FC = () => {
         await window.photoForge.updatePhotoMeta(photo.id, photo);
       }
       refreshPhotos();
+      await fetchRecentImports();
     } else {
       for (const [id, data] of entry.beforeState) {
         const { id: _, ...updates } = data;
         if (Object.keys(updates).length > 0) await window.photoForge.updatePhotoMeta(id, updates);
       }
       refreshPhotos();
+      await fetchRecentImports();
     }
     addToast('info', `${t('history.undo')} · ${entry.description}`, 2000);
-  }, [history, refreshPhotos, addToast, lang]);
+  }, [history, refreshPhotos, addToast, lang, fetchRecentImports]);
 
   const handleRedo = useCallback(async () => {
     const entry = history.redo();
@@ -513,8 +549,9 @@ export const App: React.FC = () => {
       }
     }
     refreshPhotos();
+    fetchRecentImports();
     addToast('info', `${t('history.redo')} · ${entry.description}`, 2000);
-  }, [history, deletePhotos, refreshPhotos, addToast, lang]);
+  }, [history, deletePhotos, refreshPhotos, addToast, lang, fetchRecentImports]);
 
   // ========== Missing File Repair ==========
   const handleRepairMissing = useCallback(async () => {
@@ -652,52 +689,99 @@ export const App: React.FC = () => {
       boxShadow: 'none',
     }}>
       <div style={{
-        height: 30,
+        height: COMPONENT_HEIGHT.tab,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: `0 ${SPACING.md}px`,
+        padding: `0 ${SPACING.lg}px`,
         background: theme.bgPhotoStage,
         ...dragRegionStyle,
         boxShadow: 'none',
         position: 'relative',
         zIndex: 20,
+        marginBottom: SPACING.xs,
       }}>
         <div style={{
-          display: 'inline-flex',
+          display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '4px',
-          borderRadius: 999,
-          background: theme.bgSecondary,
+          gap: 8,
           ...noDragRegionStyle,
         }}>
-          {[
-            { key: 'close', color: theme.danger, background: theme.dangerLight, action: () => window.photoForge.windowClose(), icon: 'close' as const },
-            { key: 'minimize', color: theme.warning, background: theme.warningLight, action: () => window.photoForge.windowMinimize(), icon: 'minimize' as const },
-            { key: 'maximize', color: theme.success, background: theme.successLight, action: () => window.photoForge.windowToggleMaximize(), icon: 'maximize' as const },
-          ].map((control) => (
-            <button
-              key={control.key}
-              style={{
-                width: 26,
-                height: 18,
-                borderRadius: 999,
-                padding: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: control.background,
-                color: control.color,
-                cursor: 'pointer',
-                boxShadow: 'none',
-              }}
-              onClick={control.action}
-              title={control.key}
-            >
-              <AppIcon name={control.icon} size={9} color={control.color} strokeWidth={2.1} />
-            </button>
-          ))}
+          <button
+            onClick={() => window.photoForge.windowClose()}
+            title="close"
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              padding: 0,
+              border: 'none',
+              background: theme.border,
+              cursor: 'pointer',
+              boxShadow: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 0,
+              transition: 'background 150ms cubic-bezier(0.0, 0, 0.2, 1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#ff5f57'; (e.currentTarget.children[0] as HTMLElement).style.opacity = '1'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = theme.border; (e.currentTarget.children[0] as HTMLElement).style.opacity = '0'; }}
+          >
+            <span style={{ opacity: 0, display: 'inline-flex', transition: 'opacity 150ms cubic-bezier(0.0, 0, 0.2, 1)' }}>
+              <AppIcon name="close" size={12} color="#5c0000" strokeWidth={3} />
+            </span>
+          </button>
+          <button
+            onClick={() => window.photoForge.windowMinimize()}
+            title="minimize"
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              padding: 0,
+              border: 'none',
+              background: theme.border,
+              cursor: 'pointer',
+              boxShadow: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 0,
+              transition: 'background 150ms cubic-bezier(0.0, 0, 0.2, 1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#febc2e'; (e.currentTarget.children[0] as HTMLElement).style.opacity = '1'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = theme.border; (e.currentTarget.children[0] as HTMLElement).style.opacity = '0'; }}
+          >
+            <span style={{ opacity: 0, display: 'inline-flex', transition: 'opacity 150ms cubic-bezier(0.0, 0, 0.2, 1)' }}>
+              <AppIcon name="minimize" size={12} color="#7a5a00" strokeWidth={2.5} />
+            </span>
+          </button>
+          <button
+            onClick={() => window.photoForge.windowToggleMaximize()}
+            title="maximize"
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              padding: 0,
+              border: 'none',
+              background: theme.border,
+              cursor: 'pointer',
+              boxShadow: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 0,
+              transition: 'background 150ms cubic-bezier(0.0, 0, 0.2, 1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#28c840'; (e.currentTarget.children[0] as HTMLElement).style.opacity = '1'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = theme.border; (e.currentTarget.children[0] as HTMLElement).style.opacity = '0'; }}
+          >
+            <span style={{ opacity: 0, display: 'inline-flex', transition: 'opacity 150ms cubic-bezier(0.0, 0, 0.2, 1)' }}>
+              <AppIcon name="maximize" size={12} color="#005a1b" strokeWidth={2.5} />
+            </span>
+          </button>
         </div>
         <div style={{
           position: 'absolute',
@@ -737,6 +821,9 @@ export const App: React.FC = () => {
         canUndo={history.canUndo}
         canRedo={history.canRedo}
         // Global
+        manageMode={manageMode}
+        onManageModeChange={setManageMode}
+        onClearSelection={() => { setSelectedIds(new Set()); }}
         onOpenSettings={() => navTo('settings')}
         onOpenDateGroup={() => navTo('dategroup')}
       >
@@ -753,6 +840,7 @@ export const App: React.FC = () => {
         position: 'relative',
         background: theme.bgPhotoStage,
         minHeight: 0,
+        gap: SPACING.md,
       }}>
 
         {/* Sidebar — filter sidebar, only in browse */}
@@ -760,10 +848,11 @@ export const App: React.FC = () => {
           width: showSidebar ? SIDEBAR_WIDTH : 0,
           minWidth: showSidebar ? SIDEBAR_WIDTH : 0,
           overflow: 'hidden',
-          transition: `width ${DURATION.normal}ms ${EASING.inOut}`,
+          transition: `width ${DURATION.normal}ms ${EASING.inOut}, margin ${DURATION.normal}ms ${EASING.inOut}`,
           flexShrink: 0,
           position: 'relative',
           zIndex: 2,
+          marginLeft: showSidebar ? SPACING.lg : 0,
         }}>
           <Sidebar collapsed={false} filter={filter} onFilterChange={setFilter} photos={photos} theme={theme} recentImports={recentImports} onSelectBatch={handleSelectBatch} />
         </div>
@@ -783,6 +872,7 @@ export const App: React.FC = () => {
           {/* BROWSE MODULE */}
           {activeModule === 'browse' && (
             <PhotoGrid
+              refreshKey={refreshKey}
               photos={filteredPhotos}
               selectedIds={selectedIds}
               onSelect={handleSelect}
@@ -792,6 +882,8 @@ export const App: React.FC = () => {
               onCompare={selectedIds.size >= 2 ? () => navTo('compare') : undefined}
               onSetRating={handleSetRating}
               theme={theme}
+              manageMode={manageMode}
+              onManageModeChange={setManageMode}
               thumbnailSize={settings.thumbnailSize}
               showFileExtensions={settings.showFileExtensions}
               showGridInfo={settings.showGridInfo}
@@ -843,7 +935,7 @@ export const App: React.FC = () => {
             <CompareView photos={photos.filter(p => selectedIds.has(p.id))} onBack={() => setActiveModule('browse')} theme={theme} />
           )}
           {activeModule === 'dategroup' && (
-            <DateGroupView photos={filteredPhotos} onSelectPhoto={enterEditMode} onToggleFavorite={handleToggleFavorite} selectedIds={selectedIds} theme={theme} />
+            <DateGroupView photos={filteredPhotos} onSelect={handleSelect} onSelectPhoto={enterEditMode} onToggleFavorite={handleToggleFavorite} selectedIds={selectedIds} theme={theme} />
           )}
         </main>
 
@@ -875,7 +967,7 @@ export const App: React.FC = () => {
 
       {/* Import modal */}
       {showImport && (
-        <ImportModal onImport={handleImport} onClose={() => setShowImport(false)} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
+        <ImportModal onImport={handleImport} onClose={() => { setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
       )}
 
       {/* Toasts */}
@@ -900,13 +992,13 @@ export const App: React.FC = () => {
         <div style={{
           position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)',
           background: theme.warning, color: theme.textInverse, padding: `${SPACING.md}px ${SPACING.xl}px`,
-          borderRadius: RADIUS.md, fontSize: TYPO.body.size, zIndex: 100, boxShadow: SHADOW.md,
+          borderRadius: 14, fontSize: TYPO.body.size, zIndex: 100, boxShadow: SHADOW.md,
           display: 'flex', alignItems: 'center', gap: SPACING.sm,
           animation: `toastIn ${DURATION.normal}ms ${EASING.out}`,
         }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="warning" size={14} color={theme.textInverse} />{missingFiles.length} {t('missingFiles.message')}</span>
-          <button style={{ padding: `${SPACING.xs}px ${SPACING.lg}px`, border: 'none', borderRadius: RADIUS.sm, background: 'rgba(0,0,0,0.18)', color: theme.textInverse, cursor: 'pointer', fontSize: TYPO.small.size }} onClick={handleRepairMissing}>{t('missingFiles.repair')}</button>
-          <button style={{ padding: `${SPACING.xs}px ${SPACING.lg}px`, border: 'none', borderRadius: RADIUS.sm, background: 'rgba(0,0,0,0.12)', color: theme.textInverse, cursor: 'pointer', fontSize: TYPO.small.size }} onClick={() => setMissingFiles([])}>{t('missingFiles.dismiss')}</button>
+          <button style={{ padding: `${SPACING.xs}px ${SPACING.lg}px`, border: 'none', borderRadius: 14, background: 'rgba(0,0,0,0.18)', color: theme.textInverse, cursor: 'pointer', fontSize: TYPO.small.size }} onClick={handleRepairMissing}>{t('missingFiles.repair')}</button>
+          <button style={{ padding: `${SPACING.xs}px ${SPACING.lg}px`, border: 'none', borderRadius: 14, background: 'rgba(0,0,0,0.12)', color: theme.textInverse, cursor: 'pointer', fontSize: TYPO.small.size }} onClick={() => setMissingFiles([])}>{t('missingFiles.dismiss')}</button>
         </div>
       )}
     </div>
@@ -937,6 +1029,10 @@ interface ToolbarModulesProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  // Browse manage mode
+  manageMode: boolean;
+  onManageModeChange: (m: boolean) => void;
+  onClearSelection: () => void;
   // Global
   onOpenSettings: () => void;
   onOpenDateGroup: () => void;
@@ -949,6 +1045,7 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
   sort, onSortChange, selectedCount, onBatchApplyPreset, presets,
   canCompare, onCompare, onDeleteSelected,
   activePhotoName, onBackToBrowse, onUndo, onRedo, canUndo, canRedo,
+  manageMode, onManageModeChange, onClearSelection,
   onOpenSettings, onOpenDateGroup, children,
 }) => {
   const { t: tr } = useI18n();
@@ -965,23 +1062,28 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
   ];
 
   const btnBase: React.CSSProperties = {
-    borderRadius: 12,
+    borderRadius: RADIUS.sm,
     cursor: 'pointer',
     fontSize: TYPO.body.size,
     transition: TRANSITION.all,
     whiteSpace: 'nowrap',
+    fontWeight: TYPO.bodyBold.weight,
     boxShadow: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', height: 58, padding: `0 ${SPACING.md}px`, background: t.bgPhotoStage, boxShadow: 'none', gap: SPACING.sm, flexShrink: 0, userSelect: 'none' }}>
+    <div style={{ display: 'flex', alignItems: 'center', height: 58, padding: `0 ${SPACING.lg}px`, background: t.bgPhotoStage, boxShadow: 'none', gap: SPACING.sm, flexShrink: 0, userSelect: 'none' }}>
 
       {/* Module tabs */}
-      <div style={{ display: 'flex', gap: 4, background: t.bgSecondary, borderRadius: 14, padding: 4, boxShadow: 'none' }}>
+      <div style={{ display: 'flex', gap: 4, background: t.bgSecondary, borderRadius: RADIUS.md, boxShadow: 'none' }}>
         {modules.map(m => (
           <button key={m.key} style={{
             ...btnBase,
-            padding: `${SPACING.sm}px ${SPACING.md}px`,
+            height: COMPONENT_HEIGHT.tab,
+            padding: `0 ${SPACING.md}px`,
             background: activeModule === m.key ? t.bgPrimary : 'transparent',
             color: activeModule === m.key ? t.accent : t.textSecondary,
             fontWeight: activeModule === m.key ? 600 : 400,
@@ -1000,18 +1102,24 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
       {/* Context-sensitive content */}
       {activeModule === 'browse' && (
         <>
-          <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.lg}px`, background: t.accent, color: t.textInverse, fontWeight: 700 }}
+          <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.accent, color: t.textInverse }}
             onClick={onImport}
             onMouseEnter={e => { e.currentTarget.style.background = t.accentHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.accent; }}
           ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="import" size={14} color={t.textInverse} />{tr('toolbar.import')}</span></button>
 
+          <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: manageMode ? t.accentLight : t.bgSecondary, color: manageMode ? t.accent : t.textPrimary }}
+            onClick={() => { if (manageMode) { onManageModeChange(false); onClearSelection(); } else { onManageModeChange(true); } }}
+            onMouseEnter={e => { e.currentTarget.style.background = manageMode ? t.accentLight : t.bgHover; }}
+            onMouseLeave={e => { e.currentTarget.style.background = manageMode ? t.accentLight : t.bgSecondary; }}
+          ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="select" size={14} color={manageMode ? t.accent : t.textSecondary} />{manageMode ? tr('toolbar.cancel') : tr('toolbar.select')}</span></button>
+
           <div style={{ position: 'relative' }}>
-          <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
+          <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
             onClick={() => setShowSort(!showSort)}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{tr('toolbar.sort')}<AppIcon name={sort.order === 'asc' ? 'sortAsc' : 'sortDesc'} size={13} color={t.textSecondary} /></span></button>
+          ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{tr('toolbar.sort')}<AppIcon name={sort.order === 'asc' ? 'sortAsc' : 'sortDesc'} size={14} color={t.textSecondary} /></span></button>
           {showSort && (
             <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: SPACING.xs, background: t.dropdownBg, borderRadius: RADIUS.lg, padding: SPACING.xs, boxShadow: '0 16px 36px rgba(0,0,0,0.34)', zIndex: 100 }}>
               {(['dateTaken','dateModified','fileName','fileFormat','fileSize','rating'] as const).map(f => (
@@ -1026,7 +1134,7 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
           {selectedCount > 0 && (
             <>
               <div style={{ position: 'relative' }}>
-              <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.accent, color: t.textInverse }}
+              <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.accent, color: t.textInverse }}
                 onClick={() => setShowBatch(!showBatch)}
               ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={14} color={t.textInverse} />{tr('toolbar.batchPreset')} ({selectedCount})</span></button>
               {showBatch && (
@@ -1039,14 +1147,14 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
                 </div>
               )}
               </div>
-              <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.danger, color: t.textInverse }}
+              <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.danger, color: t.textInverse }}
                 onClick={onDeleteSelected}
               ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="trash" size={14} color={t.textInverse} />({selectedCount})</span></button>
             </>
           )}
 
           {canCompare && (
-            <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
+            <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
               onClick={onCompare}
             >{tr('toolbar.compare')}</button>
           )}
@@ -1055,7 +1163,7 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
 
       {activeModule === 'edit' && (
         <>
-          <button style={{ ...btnBase, padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
+          <button style={{ ...btnBase, height: COMPONENT_HEIGHT.buttonMd, padding: `0 ${SPACING.md}px`, background: t.bgSecondary, color: t.textPrimary }}
             onClick={onBackToBrowse}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
@@ -1065,10 +1173,10 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
             {activePhotoName || ''}
           </span>
 
-          <button style={{ ...btnBase, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bgSecondary, color: t.textSecondary, opacity: canUndo ? 1 : 0.3 }}
+          <button style={{ ...btnBase, width: COMPONENT_HEIGHT.buttonMd, height: COMPONENT_HEIGHT.buttonMd, background: t.bgSecondary, color: t.textSecondary, opacity: canUndo ? 1 : 0.3 }}
             onClick={canUndo ? onUndo : undefined} title={tr('toolbar.undoTooltip')}
           ><AppIcon name="undo" size={14} color={t.textSecondary} /></button>
-          <button style={{ ...btnBase, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bgSecondary, color: t.textSecondary, opacity: canRedo ? 1 : 0.3 }}
+          <button style={{ ...btnBase, width: COMPONENT_HEIGHT.buttonMd, height: COMPONENT_HEIGHT.buttonMd, background: t.bgSecondary, color: t.textSecondary, opacity: canRedo ? 1 : 0.3 }}
             onClick={canRedo ? onRedo : undefined} title={tr('toolbar.redoTooltip')}
           ><AppIcon name="redo" size={14} color={t.textSecondary} /></button>
         </>
@@ -1080,13 +1188,13 @@ const ToolbarModules: React.FC<ToolbarModulesProps> = ({
       {/* Global actions — always visible */}
       {children}
 
-      <button style={{ ...btnBase, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: activeModule === 'dategroup' ? t.accentLight : t.bgSecondary, color: activeModule === 'dategroup' ? t.accent : t.textSecondary }}
+      <button style={{ ...btnBase, width: COMPONENT_HEIGHT.buttonMd, height: COMPONENT_HEIGHT.buttonMd, background: activeModule === 'dategroup' ? t.accentLight : t.bgSecondary, color: activeModule === 'dategroup' ? t.accent : t.textSecondary }}
         onClick={onOpenDateGroup} title={tr('toolbar.dateGroup')}
         onMouseEnter={e => { if (activeModule !== 'dategroup') e.currentTarget.style.background = t.bgHover; }}
         onMouseLeave={e => { if (activeModule !== 'dategroup') e.currentTarget.style.background = t.bgSecondary; }}
       ><AppIcon name="calendar" size={14} color={activeModule === 'dategroup' ? t.accent : t.textSecondary} /></button>
 
-      <button style={{ ...btnBase, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: activeModule === 'settings' ? t.accentLight : t.bgSecondary, color: activeModule === 'settings' ? t.accent : t.textSecondary }}
+      <button style={{ ...btnBase, width: COMPONENT_HEIGHT.buttonMd, height: COMPONENT_HEIGHT.buttonMd, background: activeModule === 'settings' ? t.accentLight : t.bgSecondary, color: activeModule === 'settings' ? t.accent : t.textSecondary }}
         onClick={onOpenSettings} title={tr('toolbar.settings')}
         onMouseEnter={e => { if (activeModule !== 'settings') e.currentTarget.style.background = t.bgHover; }}
         onMouseLeave={e => { if (activeModule !== 'settings') e.currentTarget.style.background = t.bgSecondary; }}

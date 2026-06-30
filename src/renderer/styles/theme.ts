@@ -12,63 +12,62 @@ import { SPACING, RADIUS, SHADOW, TYPO, DURATION, EASING, TRANSITION, Z_INDEX, C
 //  Accent: HSL 235 10% 48% — a gray that whispers blue.
 // ============================================================
 const lightTheme = {
-  // Backgrounds — achromatic, layered by lightness only
-  bgPrimary: '#f7f7f7',
+  // Backgrounds — layered for depth
+  bgPrimary: '#ffffff',
   bgSecondary: '#f0f0f0',
-  bgTertiary: '#f0f0f0',
-  bgCard: '#fcfcfc',
-  bgHover: '#ebebeb',
-  bgOverlay: 'rgba(0,0,0,0.40)',
-  bgInput: '#fefefe',
-  bgPhotoStage: '#dfdfdf',
-  bgPhotoSurface: '#fbfbfb',
+  bgTertiary: '#e8e8e8',
+  bgCard: '#ffffff',
+  bgHover: '#eaeaea',
+  bgOverlay: 'rgba(0,0,0,0.30)',
+  bgInput: '#ffffff',
+  bgPhotoStage: '#f5f5f5',
+  bgPhotoSurface: '#ffffff',
 
-  // Borders — barely visible, receding
-  border: '#d0d0d0',
-  borderLight: 'transparent',
-  borderFocus: '#6f6f88',
+  // Borders — visible but not dominant
+  border: '#c8c8c8',
+  borderLight: '#dadada',
+  borderFocus: '#7c3aed',
 
-  // Text — crisp, high-contrast where it matters
-  textPrimary: '#1a1a1c',
-  textSecondary: '#636366',
-  textTertiary: '#767680',
+  // Text — strong hierarchy
+  textPrimary: '#1c1c1e',
+  textSecondary: '#6b6b70',
+  textTertiary: '#9a9a9f',
   textInverse: '#ffffff',
 
-  // Brand / Accent — ultra-muted steel (HSL 235 10% 48%)
-  // Used sparingly: selected states, links, primary actions
-  accent: '#6f6f88',
-  accentHover: '#5e5e7a',
-  accentLight: '#ececf2',
-  accentBg: '#f8f8fb',
+  // Brand / Accent — purple from project spec
+  accent: '#7c3aed',
+  accentHover: '#6d28d9',
+  accentLight: '#f3eeff',
+  accentBg: '#faf7ff',
 
-  // Status — restrained, never vivid
+  // Status
   danger: '#d15555',
   dangerHover: '#c54848',
-  dangerLight: '#faf3f3',
+  dangerLight: '#fef2f2',
   warning: '#d49b1f',
-  warningLight: '#faf6ed',
-  success: '#4a9b6e',
-  successLight: '#eff7f2',
+  warningLight: '#fefce8',
+  success: '#3b8c62',
+  successLight: '#f0fdf4',
 
   // Specific surfaces
-  sidebarBg: '#dfdfdf',
-  panelBg: '#fcfcfc',
-  gridItemBg: '#fdfdfd',
+  sidebarBg: '#f5f5f5',
+  panelBg: '#ffffff',
+  gridItemBg: '#ffffff',
   dropdownBg: '#ffffff',
-  modalBg: '#fcfcfc',
+  modalBg: '#ffffff',
   scrollbarTrack: '#e8e8e8',
-  emptyState: '#767680',
+  emptyState: '#9a9a9f',
   ratingStar: '#d49b1f',
   favStar: '#d49b1f',
   colorLabelRed: '#d15555',
   colorLabelYellow: '#d49b1f',
-  colorLabelGreen: '#4a9b6e',
+  colorLabelGreen: '#3b8c62',
   colorLabelBlue: '#5b8cc7',
-  colorLabelPurple: '#6f6f88',
+  colorLabelPurple: '#7c3aed',
 
   // Interaction states
   activeBg: '#e0e0e0',
-  selectedBg: '#f4f4f9',
+  selectedBg: '#f0eaff',
   disabledOpacity: 0.45,
 
   isDark: false,
@@ -81,63 +80,62 @@ const lightTheme = {
 //  Accent: HSL 37 10% 52% — warm stone, almost gray.
 // ============================================================
 const darkTheme = {
-  // Backgrounds — deep, layered by subtle brightness steps
-  bgPrimary: '#0e0d0c',
-  bgSecondary: '#191817',
-  bgTertiary: '#191817',
-  bgCard: '#1c1b19',
-  bgHover: '#2b2a27',
-  bgOverlay: 'rgba(0,0,0,0.70)',
-  bgInput: '#1f1e1b',
-  bgPhotoStage: '#0e0d0c',
-  bgPhotoSurface: '#171614',
+  // Backgrounds — "warm charcoal", not true black
+  bgPrimary: '#1c1b1a',
+  bgSecondary: '#282725',
+  bgTertiary: '#2e2d2a',
+  bgCard: '#242320',
+  bgHover: '#343331',
+  bgOverlay: 'rgba(0,0,0,0.60)',
+  bgInput: '#2a2926',
+  bgPhotoStage: '#181716',
+  bgPhotoSurface: '#201f1c',
 
-  // Borders — subtle, receding
-  border: '#3a3936',
-  borderLight: 'transparent',
-  borderFocus: '#938a78',
+  // Borders — visible
+  border: '#4a4946',
+  borderLight: '#3d3c39',
+  borderFocus: '#a78bfa',
 
-  // Text — warm but neutral
-  textPrimary: '#ecebe8',
-  textSecondary: '#c2c0bb',
-  textTertiary: '#918f8a',
-  textInverse: '#0e0d0c',
+  // Text — high contrast
+  textPrimary: '#f0efed',
+  textSecondary: '#c8c6c2',
+  textTertiary: '#a3a19c',
+  textInverse: '#1c1b1a',
 
-  // Brand / Accent — warm stone (HSL 37 10% 52%)
-  // Muted warm accent against cool-neutral backgrounds
-  accent: '#938a78',
-  accentHover: '#a59b87',
-  accentLight: '#32312b',
-  accentBg: '#1c1b18',
+  // Brand / Accent — lighter purple for dark bg
+  accent: '#a78bfa',
+  accentHover: '#b8a0fb',
+  accentLight: '#362f4a',
+  accentBg: '#231f30',
 
-  // Status — muted warm tones
-  danger: '#bd6e68',
-  dangerHover: '#cc827c',
-  dangerLight: '#27201f',
-  warning: '#b5974c',
-  warningLight: '#27241c',
-  success: '#5b9977',
-  successLight: '#18241e',
+  // Status — brighter for dark bg
+  danger: '#e06c6c',
+  dangerHover: '#d98080',
+  dangerLight: '#3a2020',
+  warning: '#d4a847',
+  warningLight: '#3a2e15',
+  success: '#6abf8a',
+  successLight: '#173322',
 
   // Specific surfaces
-  sidebarBg: '#0e0d0c',
-  panelBg: '#171614',
-  gridItemBg: '#191816',
-  dropdownBg: '#1a1917',
-  modalBg: '#171614',
-  scrollbarTrack: '#1c1b19',
-  emptyState: '#918f8a',
-  ratingStar: '#b5974c',
-  favStar: '#b5974c',
-  colorLabelRed: '#bd6e68',
-  colorLabelYellow: '#b5974c',
-  colorLabelGreen: '#5b9977',
-  colorLabelBlue: '#7996b4',
-  colorLabelPurple: '#9290a8',
+  sidebarBg: '#201e1d',
+  panelBg: '#242320',
+  gridItemBg: '#282725',
+  dropdownBg: '#2a2926',
+  modalBg: '#242320',
+  scrollbarTrack: '#282725',
+  emptyState: '#a3a19c',
+  ratingStar: '#d4a847',
+  favStar: '#d4a847',
+  colorLabelRed: '#e06c6c',
+  colorLabelYellow: '#d4a847',
+  colorLabelGreen: '#6abf8a',
+  colorLabelBlue: '#80b5dc',
+  colorLabelPurple: '#a78bfa',
 
   // Interaction states
-  activeBg: '#2a2926',
-  selectedBg: '#24231e',
+  activeBg: '#3a3936',
+  selectedBg: '#2f2940',
   disabledOpacity: 0.38,
 
   isDark: true,
@@ -151,25 +149,25 @@ const darkTheme = {
 // Vintage "Darkroom Green" — muted forest, ~18% accent saturation
 const vintageTheme = {
   // Muted forest — green undertone, not overwhelming
-  bgPrimary: '#1e2622',
-  bgSecondary: '#262d29',
+  bgPrimary: '#242d28',
+  bgSecondary: '#2c3430',
   bgTertiary: '#262d29',
   bgCard: '#222a25',
-  bgHover: '#2f3732',
+  bgHover: '#363e39',
   bgOverlay: 'rgba(8,12,10,0.76)',
   bgInput: '#232b26',
-  bgPhotoStage: '#171d1a',
+  bgPhotoStage: '#1c2620',
   bgPhotoSurface: '#1e2622',
 
   // Subtle borders
-  border: '#35433a',
-  borderLight: 'transparent',
+  border: '#3d4c42',
+  borderLight: '#354639',
   borderFocus: '#5a9a6a',
 
   // High-contrast text
-  textPrimary: '#f0f2ef',
+  textPrimary: '#f5f5f0',
   textSecondary: '#c9cfca',
-  textTertiary: '#a1aba3',
+  textTertiary: '#b8c0b6',
   textInverse: '#171d1a',
 
   // Muted sage accent — visible but not glaring
@@ -188,13 +186,13 @@ const vintageTheme = {
   successLight: '#1c2e22',
 
   // Specific surfaces
-  sidebarBg: '#171d1a',
+  sidebarBg: '#1f2824',
   panelBg: '#222a25',
   gridItemBg: '#252d28',
   dropdownBg: '#242c27',
   modalBg: '#222a25',
   scrollbarTrack: '#252d28',
-  emptyState: '#a1aba3',
+  emptyState: '#b0baaf',
   ratingStar: '#cfb262',
   favStar: '#cfb262',
   colorLabelRed: '#bc7a70',
@@ -211,23 +209,23 @@ const vintageTheme = {
 }
 // "Graphite Gold" — deep graphite with barely-gold accent (15%)
 const graphiteGoldTheme = {
-  bgPrimary: '#0f1011',
-  bgSecondary: '#16181a',
+  bgPrimary: '#1b1c1e',
+  bgSecondary: '#232528',
   bgTertiary: '#16181a',
   bgCard: '#181b1e',
   bgHover: '#262a2f',
   bgOverlay: 'rgba(6,7,8,0.76)',
   bgInput: '#15171a',
-  bgPhotoStage: '#090a0b',
+  bgPhotoStage: '#141517',
   bgPhotoSurface: '#121417',
 
-  border: '#3e4248',
-  borderLight: 'transparent',
+  border: '#4a4e54',
+  borderLight: '#353a40',
   borderFocus: '#9a8c64',
 
   textPrimary: '#edf0f2',
   textSecondary: '#cdd2d7',
-  textTertiary: '#8f98a0',
+  textTertiary: '#a0a9b2',
   textInverse: '#0c0e10',
 
   accent: '#9a8c64',
@@ -243,13 +241,13 @@ const graphiteGoldTheme = {
   success: '#6fa87c',
   successLight: '#17241c',
 
-  sidebarBg: '#090a0b',
+  sidebarBg: '#18191b',
   panelBg: '#16191c',
   gridItemBg: '#171b1f',
   dropdownBg: '#181b1f',
   modalBg: '#16191c',
   scrollbarTrack: '#181b1f',
-  emptyState: '#8f98a0',
+  emptyState: '#a0a9b2',
   ratingStar: '#b8995a',
   favStar: '#b8995a',
   colorLabelRed: '#c8746c',
@@ -266,23 +264,23 @@ const graphiteGoldTheme = {
 
 // "Slate Blue" — deep slate with muted steel accent (15%)
 const slateBlueTheme = {
-  bgPrimary: '#0e1116',
-  bgSecondary: '#151921',
+  bgPrimary: '#1a1e24',
+  bgSecondary: '#232830',
   bgTertiary: '#151921',
   bgCard: '#171c25',
   bgHover: '#242c39',
   bgOverlay: 'rgba(5,7,10,0.76)',
   bgInput: '#141820',
-  bgPhotoStage: '#090b10',
+  bgPhotoStage: '#14171e',
   bgPhotoSurface: '#11151d',
 
-  border: '#3e4552',
-  borderLight: 'transparent',
+  border: '#48505e',
+  borderLight: '#353d4b',
   borderFocus: '#6b95b8',
 
   textPrimary: '#ecf0f5',
   textSecondary: '#cdd4dc',
-  textTertiary: '#8e9aaa',
+  textTertiary: '#a0acba',
   textInverse: '#0d1116',
 
   accent: '#6b95b8',
@@ -298,13 +296,13 @@ const slateBlueTheme = {
   success: '#6d9e8c',
   successLight: '#16241f',
 
-  sidebarBg: '#090b10',
+  sidebarBg: '#171b22',
   panelBg: '#151a22',
   gridItemBg: '#161c25',
   dropdownBg: '#161b24',
   modalBg: '#151a22',
   scrollbarTrack: '#161c25',
-  emptyState: '#8e9aaa',
+  emptyState: '#a0acba',
   ratingStar: '#b8935a',
   favStar: '#b8935a',
   colorLabelRed: '#c07074',
@@ -321,23 +319,23 @@ const slateBlueTheme = {
 
 // "Merlot" — deep wine with muted burgundy accent (18%)
 const merlotTheme = {
-  bgPrimary: '#110f10',
-  bgSecondary: '#181517',
+  bgPrimary: '#1e1b1c',
+  bgSecondary: '#262224',
   bgTertiary: '#181517',
   bgCard: '#1c181a',
   bgHover: '#292326',
   bgOverlay: 'rgba(7,6,6,0.76)',
   bgInput: '#171415',
-  bgPhotoStage: '#0b090a',
+  bgPhotoStage: '#171314',
   bgPhotoSurface: '#131112',
 
-  border: '#453e41',
-  borderLight: 'transparent',
+  border: '#51494c',
+  borderLight: '#3d3437',
   borderFocus: '#9a606a',
 
   textPrimary: '#f1ebed',
   textSecondary: '#daced0',
-  textTertiary: '#a19195',
+  textTertiary: '#b3a3a7',
   textInverse: '#0e0c0d',
 
   accent: '#9a606a',
@@ -353,13 +351,13 @@ const merlotTheme = {
   success: '#7e9d80',
   successLight: '#18241b',
 
-  sidebarBg: '#0b090a',
+  sidebarBg: '#1a1718',
   panelBg: '#181416',
   gridItemBg: '#1b1619',
   dropdownBg: '#1a1517',
   modalBg: '#181416',
   scrollbarTrack: '#1a1517',
-  emptyState: '#a19195',
+  emptyState: '#b3a3a7',
   ratingStar: '#b8925a',
   favStar: '#b8925a',
   colorLabelRed: '#c46e6c',

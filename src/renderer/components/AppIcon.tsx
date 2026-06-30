@@ -54,7 +54,8 @@ type IconName =
   | 'radioOn'
   | 'radioOff'
   | 'minimize'
-  | 'maximize';
+  | 'maximize'
+  | 'select';
 
 interface AppIconProps {
   name: IconName;
@@ -149,6 +150,8 @@ export const AppIcon: React.FC<AppIconProps> = ({
       return <svg {...common}><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M3 7V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1" /></svg>;
     case 'edit':
       return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" /></svg>;
+    case 'select':
+      return <svg {...common}><circle cx="12" cy="12" r="8.2" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.5} /><path d="m8 12 3 3 5-6" fill="none" stroke={color} strokeWidth={strokeWidth ?? 1.5} /></svg>;
     case 'check':
       return <svg {...common}><path d="m5 12 4 4L19 6" /></svg>;
     case 'link':
@@ -198,7 +201,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
     case 'minimize':
       return <svg {...common}><path d="M6 12h12" /></svg>;
     case 'maximize':
-      return <svg {...common}><rect x="6" y="6" width="12" height="12" rx="2" /></svg>;
+      return <svg {...common}><path d="M4 4 20 20 M14 20 20 20 20 14 M10 4 4 4 4 10" /></svg>;
     default:
       return null;
   }

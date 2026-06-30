@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ImportProgress } from '../../shared/types';
-import { Theme, SPACING, RADIUS, SHADOW, TYPO, TRANSITION } from '../styles/theme';
+import { Theme, SPACING, RADIUS, SHADOW, TYPO, TRANSITION, DURATION, EASING } from '../styles/theme';
 import { useI18n, Lang } from '../i18n';
 import { AppIcon } from './AppIcon';
 
@@ -18,6 +18,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
   const [dragging, setDragging] = useState(false);
   const [importMode, setImportMode] = useState<'copy' | 'reference'>(defaultImportMode);
   const [rememberChoice, setRememberChoice] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const stageLabels: Record<string, string> = {
     scanning: tr('import.stage.scanning'), copying: tr('import.stage.copying'),
@@ -27,25 +29,60 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
   const pct = progress ? Math.round((progress.current / progress.total) * 100) : 0;
   useEffect(() => { setImportMode(defaultImportMode); }, [defaultImportMode]);
 
+  // Handle completion animation sequence: show success overlay → exit animation → close
+  useEffect(() => {
+    if (progress?.stage === 'complete' && !exiting && !showSuccess) {
+      setShowSuccess(true);
+      const closeTimer = setTimeout(() => {
+        setExiting(true);
+        setTimeout(onClose, DURATION.normal); // match exit animation duration
+      }, 1400);
+      return () => clearTimeout(closeTimer);
+    }
+  }, [progress?.stage, exiting, showSuccess, onClose]);
+
+  // Prevent overlay click when showing success or importing
+  const handleOverlayClick = () => {
+    if (!progress) onClose();
+  };
+
   return (
-    <div style={s(t).overlay} onClick={onClose}>
-      <div style={s(t).modal} onClick={e => e.stopPropagation()}>
+    <div style={{
+      ...s(t).overlay,
+      animation: exiting ? `scaleOut ${DURATION.normal}ms ${EASING.out} forwards` : 'none',
+    }} onClick={handleOverlayClick}>
+      <div style={{
+        ...s(t).modal,
+        animation: exiting ? `scaleOut ${DURATION.normal}ms ${EASING.out} forwards` : 'none',
+      }} onClick={e => e.stopPropagation()}>
         {/* Fixed header */}
-        <div style={s(t).header}><h2 style={s(t).title}>{tr('import.title')}</h2><button style={s(t).closeBtn} onClick={onClose}><AppIcon name="close" size={14} color={t.textSecondary} /></button></div>
+        <div style={s(t).header}>
+          <h2 style={s(t).title}>{tr('import.title')}</h2>
+          <button style={s(t).closeBtn} onClick={onClose}
+            onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
+            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}>
+            <AppIcon name="close" size={14} color={t.textSecondary} />
+          </button>
+        </div>
         {/* Fixed mode selector */}
         <div style={s(t).modeSection}>
           <label style={s(t).modeLabel}>{tr('import.mode')}</label>
           <div style={s(t).modeButtons}>
-            <button style={{ ...s(t).modeBtn, background: importMode === 'copy' ? t.accentLight : t.bgSecondary, color: importMode === 'copy' ? t.accent : t.textSecondary, outline: importMode === 'copy' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('copy')}>
+            <button style={{ ...s(t).modeBtn, background: importMode === 'copy' ? t.accentLight : t.bgSecondary, color: importMode === 'copy' ? t.accent : t.textPrimary, border: importMode === 'copy' ? `2px solid ${t.accent}` : `1px solid ${t.border}` }}
+              onMouseEnter={e => { if (importMode !== 'copy') { e.currentTarget.style.background = t.bgHover; e.currentTarget.style.borderColor = t.accent; } }}
+              onMouseLeave={e => { if (importMode !== 'copy') { e.currentTarget.style.background = t.bgSecondary; e.currentTarget.style.borderColor = t.border; } }} onClick={() => setImportMode('copy')}>
               {tr('import.copyToLibrary')}<span style={s(t).modeBtnDesc}>{tr('import.copyDesc')}</span>
             </button>
-            <button style={{ ...s(t).modeBtn, background: importMode === 'reference' ? t.accentLight : t.bgSecondary, color: importMode === 'reference' ? t.accent : t.textSecondary, outline: importMode === 'reference' ? `2px solid ${t.accent}` : 'none', outlineOffset: -2 }} onClick={() => setImportMode('reference')}>
+            <button style={{ ...s(t).modeBtn, background: importMode === 'reference' ? t.accentLight : t.bgSecondary, color: importMode === 'reference' ? t.accent : t.textPrimary, border: importMode === 'reference' ? `2px solid ${t.accent}` : `1px solid ${t.border}` }}
+              onMouseEnter={e => { if (importMode !== 'reference') { e.currentTarget.style.background = t.bgHover; e.currentTarget.style.borderColor = t.accent; } }}
+              onMouseLeave={e => { if (importMode !== 'reference') { e.currentTarget.style.background = t.bgSecondary; e.currentTarget.style.borderColor = t.border; } }} onClick={() => setImportMode('reference')}>
               {tr('import.reference')}<span style={s(t).modeBtnDesc}>{tr('import.refDesc')}</span>
             </button>
           </div>
         </div>
         {/* Scrollable body: drop zone + path list + progress + formats */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.xl}px`, minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.xl}px`, minHeight: 0, position: 'relative' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING.lg, minHeight: 0 }}>
           <div style={{ ...s(t).dropZone, borderColor: dragging ? t.accent : t.border, background: dragging ? t.accentBg : t.bgSecondary }}
             onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
             onDrop={e => { e.preventDefault(); setDragging(false); const files = Array.from(e.dataTransfer.files).map((f: any) => f.path); if (files.length) setPaths(prev => [...new Set([...prev, ...files])]); }}>
@@ -57,14 +94,47 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
             }}>{tr('import.selectFiles')}</button>
           </div>
           {paths.length > 0 && (<div style={s(t).pathList}>{paths.map((p, i) => (<div key={i} style={s(t).pathItem}><span style={s(t).pathText}>{p}</span><button style={s(t).removeBtn} onClick={() => setPaths(prev => prev.filter((_, idx) => idx !== i))}><AppIcon name="close" size={12} color={t.textTertiary} /></button></div>))}</div>)}
-          {progress && (<div style={s(t).progressArea}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: SPACING.xs }}><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{stageLabels[progress.stage] || progress.stage}</span><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{pct}%</span></div><div style={s(t).progressBar}><div style={{ ...s(t).progressFill, width: `${pct}%` }} /></div>{progress.currentFile && (<div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{progress.currentFile}</div>)}</div>)}
+          {progress && !showSuccess && (<div style={s(t).progressArea}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: SPACING.xs }}><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{stageLabels[progress.stage] || progress.stage}</span><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{pct}%</span></div><div style={s(t).progressBar}><div style={{ ...s(t).progressFill, width: `${pct}%` }} /></div>{progress.currentFile && (<div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{progress.currentFile}</div>)}</div>)}
           <div style={s(t).formats}><div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginBottom: SPACING.xs }}>{tr('import.supportedFormats')}</div><div style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, lineHeight: 1.5 }}>JPEG · PNG · GIF · BMP · TIFF · WebP · HEIC/HEIF · AVIF<br/>Canon CR2/CR3 · Nikon NEF/NRW · Sony ARW · Fujifilm RAF · Olympus ORF · Panasonic RW2 · Adobe DNG · Pentax PEF · Samsung SRW · PhaseOne IIQ · Hasselblad 3FR/FFF · Sigma X3F</div></div>
+          </div>
+
+          {/* Success overlay — fades in when import completes */}
+          {showSuccess && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: t.bgPrimary, borderRadius: RADIUS.xl,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              animation: `fadeInUp ${DURATION.normal}ms ${EASING.out} both`,
+              zIndex: 10,
+            }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: t.successLight,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: SPACING.lg,
+                animation: `successPulse ${DURATION.slow}ms ${EASING.out}`,
+              }}>
+                <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke={t.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" strokeDasharray={100} strokeDashoffset={0}
+                    style={{ animation: `checkmark ${DURATION.normal}ms ${EASING.out} forwards` }} />
+                </svg>
+              </div>
+              <div style={{ fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.sm }}>
+                {tr('import.stage.complete')}
+              </div>
+              <div style={{ fontSize: TYPO.body.size, color: t.textSecondary }}>
+                {progress ? `${progress.current} / ${progress.total} ${tr('grid.photoCount')}` : ''}
+              </div>
+            </div>
+          )}
         </div>
         {/* Fixed footer actions */}
         <div style={s(t).actions}>
           <label style={{ fontSize: TYPO.caption.size, color: t.textTertiary, display: 'flex', alignItems: 'center', gap: SPACING.xs, marginRight: 'auto' }}><input type="checkbox" checked={rememberChoice} onChange={e => setRememberChoice(e.target.checked)} />{tr('import.remember')}</label>
-          <button style={s(t).cancelBtn} onClick={onClose} disabled={!!progress}>{tr('import.cancel')}</button>
-          <button style={{ ...s(t).importBtn, opacity: paths.length === 0 || !!progress ? 0.5 : 1 }} onClick={() => onImport(paths, importMode)} disabled={paths.length === 0 || !!progress}>
+          <button style={s(t).cancelBtn} onClick={onClose}
+            onMouseEnter={e => { if (!progress) { e.currentTarget.style.background = t.bgHover; } }}
+            onMouseLeave={e => { if (!progress) { e.currentTarget.style.background = t.bgSecondary; } }} disabled={!!progress || showSuccess}>{tr('import.cancel')}</button>
+          <button style={{ ...s(t).importBtn, opacity: paths.length === 0 || !!progress || showSuccess ? 0.5 : 1 }} onClick={() => onImport(paths, importMode)} disabled={paths.length === 0 || !!progress || showSuccess}>
             {progress ? tr('import.importing') : `${tr('import.start')} (${importMode === 'copy' ? tr('import.copyLabel') : tr('import.refLabel')})`}
           </button>
         </div>
@@ -75,16 +145,16 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   overlay: { position: 'fixed', inset: 0, background: t.bgOverlay, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 },
-  modal: { width: 560, maxHeight: '90vh', background: `linear-gradient(180deg, ${t.modalBg}, ${t.bgSecondary})`, borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 72px rgba(0,0,0,0.34)', outline: 'none', boxSizing: 'border-box' },
+  modal: { width: 560, maxHeight: '90vh', background: `linear-gradient(180deg, ${t.modalBg}, ${t.bgSecondary})`, borderRadius: RADIUS.xl, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 72px rgba(0,0,0,0.34)', outline: 'none', boxSizing: 'border-box' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.xl, paddingBottom: 0, flexShrink: 0 },
   title: { fontSize: TYPO.heading.size, color: t.textPrimary, fontWeight: 600 },
-  closeBtn: { width: 28, height: 28, border: 'none', borderRadius: RADIUS.pill, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.subheading.size, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modeSection: { padding: `0 ${SPACING.xl}px`, flexShrink: 0 }, modeLabel: { display: 'block', fontSize: TYPO.body.size, fontWeight: 500, color: t.textPrimary, marginBottom: SPACING.sm },
-  modeButtons: { display: 'flex', gap: SPACING.sm }, modeBtn: { flex: 1, padding: `${SPACING.md}px ${SPACING.lg}px`, border: 'none', borderRadius: 14, cursor: 'pointer', fontSize: TYPO.body.size, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: SPACING.xs, boxShadow: 'none' }, modeBtnDesc: { fontSize: TYPO.tiny.size, color: t.textTertiary, fontWeight: 400 },
-  dropZone: { border: '2px dashed', borderRadius: 16, padding: `${SPACING.xxl}px ${SPACING.lg}px`, textAlign: 'center', boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.2)' },
-  selectBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size },
-  pathList: { marginBottom: SPACING.md, maxHeight: 120, overflowY: 'auto' }, pathItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${SPACING.xs}px ${SPACING.md}px`, background: `linear-gradient(180deg, ${t.bgSecondary}, ${t.bgPrimary})`, borderRadius: 12, marginBottom: SPACING.xs }, pathText: { fontSize: TYPO.small.size, color: t.textSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, removeBtn: { border: 'none', background: 'transparent', color: t.textTertiary, cursor: 'pointer', fontSize: 14, marginLeft: 8 },
-  progressArea: { marginBottom: SPACING.md }, progressBar: { height: 6, background: t.bgSecondary, borderRadius: 999, overflow: 'hidden' }, progressFill: { height: '100%', background: t.accent, borderRadius: 999, transition: 'width 0.3s' },
-  actions: { display: 'flex', justifyContent: 'flex-end', gap: SPACING.sm, alignItems: 'center', padding: `${SPACING.md}px ${SPACING.xl}px ${SPACING.xl}px`, flexShrink: 0 }, cancelBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.body.size }, importBtn: { padding: '8px 24px', border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600 },
-  formats: { padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgSecondary, borderRadius: 12 },
+  closeBtn: { width: 28, height: 28, border: `1px solid ${t.border}`, borderRadius: RADIUS.pill, transition: TRANSITION.all, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.subheading.size, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  modeSection: { padding: `${SPACING.lg}px ${SPACING.xl}px`, flexShrink: 0 }, modeLabel: { display: 'block', fontSize: TYPO.body.size, fontWeight: 500, color: t.textPrimary, marginBottom: SPACING.sm },
+  modeButtons: { display: 'flex', gap: SPACING.sm }, modeBtn: { flex: 1, padding: `${SPACING.md}px ${SPACING.lg}px`, border: `1.5px solid transparent`, borderRadius: RADIUS.lg, cursor: 'pointer', fontSize: TYPO.body.size, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: SPACING.xs, boxShadow: 'none' }, modeBtnDesc: { fontSize: TYPO.tiny.size, color: t.textTertiary, fontWeight: 400 },
+  dropZone: { border: '2px dashed', borderRadius: RADIUS.lg, padding: `${SPACING.xxl}px ${SPACING.lg}px`, textAlign: 'center', boxShadow: SHADOW.sm },
+  selectBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: RADIUS.md, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size },
+  pathList: { maxHeight: 120, overflowY: 'auto' }, pathItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${SPACING.xs}px ${SPACING.md}px`, background: `linear-gradient(180deg, ${t.bgSecondary}, ${t.bgPrimary})`, borderRadius: RADIUS.lg, marginBottom: SPACING.xs }, pathText: { fontSize: TYPO.small.size, color: t.textSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, removeBtn: { border: 'none', background: 'transparent', color: t.textTertiary, cursor: 'pointer', fontSize: 14, marginLeft: 8 },
+  progressArea: {}, progressBar: { height: 6, background: t.bgSecondary, borderRadius: 999, overflow: 'hidden' }, progressFill: { height: '100%', borderRadius: 999, transition: 'width 0.3s ease' },
+  actions: { display: 'flex', justifyContent: 'flex-end', gap: SPACING.sm, alignItems: 'center', padding: `${SPACING.md}px ${SPACING.xl}px ${SPACING.xl}px`, flexShrink: 0 }, cancelBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: `1px solid ${t.border}`, borderRadius: RADIUS.md, transition: TRANSITION.all, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: TYPO.body.size }, importBtn: { padding: `${SPACING.sm}px ${SPACING.xl}px`, border: 'none', borderRadius: RADIUS.md, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600 },
+  formats: { padding: `${SPACING.md}px ${SPACING.lg}px`, background: t.bgSecondary, border: `1px solid ${t.border}`, borderRadius: RADIUS.lg },
 });

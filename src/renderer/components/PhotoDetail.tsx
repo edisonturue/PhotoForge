@@ -6,6 +6,7 @@ import { Histogram } from './Histogram';
 import { CanvasRenderer, useEffectiveAdjustments } from './CanvasRenderer';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { Select } from './Select';
 
 interface PhotoDetailProps {
   photo: PhotoFile;
@@ -149,6 +150,72 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   const [cropMode, setCropMode] = useState(false);
   const [cropRegion, setCropRegion] = useState<CropRegion>({ x: 0, y: 0, width: 1, height: 1 });
   const [cropPreset, setCropPreset] = useState<string>('free');
+  // Crop image bounds tracking — used to position overlay precisely over the photo
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [photoBounds, setPhotoBounds] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // Draggable crop state
+  const cropDragRef = useRef<{ handle: string; startX: number; startY: number; initRegion: CropRegion; initBounds: { w: number; h: number } } | null>(null);
+  const [dragHandle, setDragHandle] = useState<string | null>(null);
+
+  const startCropDrag = useCallback((e: React.MouseEvent, handle: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const bounds = imageContainerRef.current;
+    if (!bounds || !photoBounds) return;
+    cropDragRef.current = {
+      handle,
+      startX: e.clientX,
+      startY: e.clientY,
+      initRegion: { ...cropRegion },
+      initBounds: { w: photoBounds.w, h: photoBounds.h },
+    };
+    setDragHandle(handle);
+  }, [cropRegion, photoBounds]);
+
+  const onCropMouseMove = useCallback((e: React.MouseEvent) => {
+    const drag = cropDragRef.current;
+    if (!drag) return;
+    const dx = (e.clientX - drag.startX) / drag.initBounds.w;
+    const dy = (e.clientY - drag.startY) / drag.initBounds.h;
+    const r = drag.initRegion;
+    let nx = r.x, ny = r.y, nw = r.width, nh = r.height;
+
+    const h = drag.handle;
+    if (h === 'move') { nx = r.x + dx; ny = r.y + dy; }
+    else if (h === 'e') { nw = Math.max(0.05, r.width + dx); }
+    else if (h === 'w') { nw = Math.max(0.05, r.width - dx); nx = r.x + (r.width - nw); }
+    else if (h === 's') { nh = Math.max(0.05, r.height + dy); }
+    else if (h === 'n') { nh = Math.max(0.05, r.height - dy); ny = r.y + (r.height - nh); }
+    else if (h === 'se') { nw = Math.max(0.05, r.width + dx); nh = Math.max(0.05, r.height + dy); }
+    else if (h === 'sw') { nw = Math.max(0.05, r.width - dx); nx = r.x + (r.width - nw); nh = Math.max(0.05, r.height + dy); }
+    else if (h === 'ne') { nw = Math.max(0.05, r.width + dx); nh = Math.max(0.05, r.height - dy); ny = r.y + (r.height - nh); }
+    else if (h === 'nw') { nw = Math.max(0.05, r.width - dx); nx = r.x + (r.width - nw); nh = Math.max(0.05, r.height - dy); ny = r.y + (r.height - nh); }
+    if (cropPreset !== 'free' && h !== 'move') {
+      // Maintain aspect ratio
+      const [wp, hp] = cropPreset.split(':').map(Number);
+      const ratio = wp / hp;
+      if (Math.abs(dx) > Math.abs(dy)) { nh = nw / ratio; }
+      else { nw = nh * ratio; }
+      // Re-center
+      if (h.includes('e')) { nx = r.x; }
+      else if (h.includes('w')) { nx = r.x + (r.width - nw); }
+      else { nx = r.x + (r.width - nw) / 2; }
+      if (h.includes('s')) { ny = r.y; }
+      else if (h.includes('n')) { ny = r.y + (r.height - nh); }
+      else { ny = r.y + (r.height - nh) / 2; }
+    }
+    // Clamp
+    if (nx < 0) nx = 0;
+    if (ny < 0) ny = 0;
+    if (nx + nw > 1) { nw = 1 - nx; }
+    if (ny + nh > 1) { nh = 1 - ny; }
+    setCropRegion({ x: nx, y: ny, width: Math.max(0.05, nw), height: Math.max(0.05, nh) });
+  }, [cropPreset]);
+
+  const stopCropDrag = useCallback(() => {
+    cropDragRef.current = null;
+    setDragHandle(null);
+  }, []);
   const cropPresets = [{ label: tr('detail.cropFree'), value: 'free' }, { label: '1:1', value: '1:1' }, { label: '4:3', value: '4:3' }, { label: '3:2', value: '3:2' }, { label: '16:9', value: '16:9' }];
 
   const applyCropPreset = (preset: string) => {
@@ -162,6 +229,27 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
     else { const cW = ratio / imgRatio; nr = { x: (1 - cW) / 2, y: 0, width: cW, height: 1 }; }
     setCropRegion(nr);
   };
+  // When entering crop mode: reset zoom, disable pan, measure photo bounds
+  const enterCropMode = useCallback(() => {
+    resetView();
+    setCropMode(true);
+    // Measure after render
+    requestAnimationFrame(() => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+      const img = container.querySelector('img');
+      if (!img || !img.naturalWidth || !img.naturalHeight) return;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const scale = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      const x = (cw - w) / 2;
+      const y = (ch - h) / 2;
+      setPhotoBounds({ x, y, w, h });
+    });
+  }, [resetView]);
+
   const confirmCrop = () => { onUpdatePhoto(photo.id, { cropRegion }); setCropMode(false); };
   const handleFlipH = () => onUpdatePhoto(photo.id, { flipH: !photo.flipH });
   const handleFlipV = () => onUpdatePhoto(photo.id, { flipV: !photo.flipV });
@@ -269,29 +357,31 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
         >{tr('detail.back')}</button>
         <span style={s(t).photoName}>{photo.fileName}</span>
         <div style={s(t).topActions}>
-          <button style={s(t).iconBtn} onClick={handleFlipH} title={tr('detail.flipH')}
+          <div style={{ display: 'flex', gap: 2 }}>
+          <button style={{ ...s(t).actionLabelBtn, background: photo.flipH ? t.accentLight : t.bgSecondary }} onClick={handleFlipH} title={tr('detail.flipH')}
+            onMouseEnter={e => { if (!photo.flipH) e.currentTarget.style.background = t.bgHover; }}
+            onMouseLeave={e => { if (!photo.flipH) e.currentTarget.style.background = t.bgSecondary; }}
+          ><AppIcon name="flipH" size={16} color={photo.flipH ? t.accent : t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>{tr('detail.flipH')}</span></button>
+          <button style={{ ...s(t).actionLabelBtn, background: photo.flipV ? t.accentLight : t.bgSecondary }} onClick={handleFlipV} title={tr('detail.flipV')}
+            onMouseEnter={e => { if (!photo.flipV) e.currentTarget.style.background = t.bgHover; }}
+            onMouseLeave={e => { if (!photo.flipV) e.currentTarget.style.background = t.bgSecondary; }}
+          ><AppIcon name="flipV" size={16} color={photo.flipV ? t.accent : t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>{tr('detail.flipV')}</span></button>
+          <button style={s(t).actionLabelBtn} onClick={handleRotate} title={tr('detail.rotate')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><AppIcon name="flipH" size={14} color={t.textPrimary} /></button>
-          <button style={s(t).iconBtn} onClick={handleFlipV} title={tr('detail.flipV')}
+          ><AppIcon name="rotate" size={16} color={t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>{tr('detail.rotate')}</span></button>
+          <button style={s(t).actionLabelBtn} onClick={resetView} title={tr('detail.resetView')}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><AppIcon name="flipV" size={14} color={t.textPrimary} /></button>
-          <button style={s(t).iconBtn} onClick={handleRotate} title={tr('detail.rotate')}
-            onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><AppIcon name="rotate" size={14} color={t.textPrimary} /></button>
-          <button style={s(t).iconBtn} onClick={resetView} title={tr('detail.resetView')}
-            onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><AppIcon name="search" size={14} color={t.textPrimary} /></button>
+          ><AppIcon name="maximize" size={16} color={t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>1:1</span></button>
+          </div>
           {cropMode ? (
             <>
               <button style={{ ...s(t).iconBtn, background: t.accent, color: t.textInverse }} onClick={confirmCrop}>{tr('detail.confirmCrop')}</button>
               <button style={s(t).iconBtn} onClick={() => setCropMode(false)}>{tr('detail.cancelCrop')}</button>
             </>
           ) : (
-            <button style={s(t).iconBtn} onClick={() => setCropMode(true)}><AppIcon name="crop" size={14} color={t.textPrimary} /></button>
+            <button style={s(t).iconBtn} onClick={enterCropMode}><AppIcon name="crop" size={14} color={t.textPrimary} /></button>
           )}
         </div>
       </div>
@@ -299,12 +389,24 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       {/* Body */}
       <div style={s(t).body}>
         {/* Image area */}
-        <div style={s(t).imageArea} onWheel={handleWheel} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+        <div style={s(t).imageArea}
+          onWheel={cropMode ? undefined : handleWheel}
+          onMouseDown={cropMode ? undefined : handleMouseDown}
+          onMouseMove={cropMode ? onCropMouseMove : handleMouseMove}
+          onMouseUp={cropMode ? stopCropDrag : handleMouseUp}
+          onMouseLeave={cropMode ? stopCropDrag : handleMouseUp}>
+          <div ref={imageContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', maxWidth: '90%', maxHeight: '90%' }}>
           <CanvasRenderer src={imageSrc}
             adjustments={effectiveAdj}
             style={{
-              ...s(t).image,
-              transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px) ${[photo.flipH ? 'scaleX(-1)' : '', photo.flipV ? 'scaleY(-1)' : '', photo.rotation ? `rotate(${photo.rotation}deg)` : ''].filter(Boolean).join(' ')}`,
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              borderRadius: 14,
+              boxShadow: SHADOW.lg,
+              transition: 'transform 0.05s ease-out',
+              userSelect: 'none',
+              transform: cropMode ? 'none' : `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px) ${[photo.flipH ? 'scaleX(-1)' : '', photo.flipV ? 'scaleY(-1)' : '', photo.rotation ? `rotate(${photo.rotation}deg)` : ''].filter(Boolean).join(' ')}`,
             }}
             alt={photo.fileName} draggable={false}
           />
@@ -313,18 +415,38 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
             <div style={{ ...s(t).presetTag, left: 'auto', right: 12, background: t.warning }}><AppIcon name="adjustments" size={12} color={t.textInverse} /></div>
           )}
           {photo.isReferenced && <div style={s(t).refTag}><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="link" size={11} color={t.textInverse} />{tr('detail.referenced')}</span></div>}
-          {cropMode && (
-            <div style={s(t).cropOverlay}>
-              <div style={{ ...s(t).cropBox, left: `${cropRegion.x * 100}%`, top: `${cropRegion.y * 100}%`, width: `${cropRegion.width * 100}%`, height: `${cropRegion.height * 100}%` }}>
-                <div style={{ display: 'flex', gap: 4, position: 'absolute', top: -28, left: 0 }}>
-                  {cropPresets.map(cp => (
-                    <button key={cp.value} style={{ ...s(t).cropPresetBtn, background: cropPreset === cp.value ? t.accent : t.bgSecondary, color: cropPreset === cp.value ? t.textInverse : t.textSecondary }}
-                      onClick={() => applyCropPreset(cp.value)}>{cp.label}</button>
-                  ))}
+          {cropMode && photoBounds && (
+            <div style={{ position: 'absolute', left: photoBounds.x, top: photoBounds.y, width: photoBounds.w, height: photoBounds.h, pointerEvents: 'none' }}>
+              {/* Dark overlay with hole for crop region */}
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'auto', cursor: dragHandle ? 'grabbing' : 'default' }}>
+                {/* Crop selection */}
+                <div style={{ position: 'absolute', left: `${cropRegion.x * 100}%`, top: `${cropRegion.y * 100}%`, width: `${cropRegion.width * 100}%`, height: `${cropRegion.height * 100}%`, background: 'rgba(255,255,255,0.06)', pointerEvents: 'auto' }}>
+                  {/* Border */}
+                  <div style={{ position: 'absolute', inset: -1, border: '2px solid rgba(255,255,255,0.92)', borderRadius: 2, pointerEvents: 'none' }} />
+                  {/* Move handle (drag to reposition) */}
+                  <div style={{ position: 'absolute', inset: 0, cursor: dragHandle === 'move' ? 'grabbing' : 'grab' }}
+                    onMouseDown={e => startCropDrag(e, 'move')} />
+                  {/* Preset ratio buttons */}
+                  <div style={{ display: 'flex', gap: 4, position: 'absolute', top: -28, left: 0, pointerEvents: 'auto' }}>
+                    {cropPresets.map(cp => (
+                      <button key={cp.value} style={{ padding: '2px 8px', border: 'none', borderRadius: 6, background: cropPreset === cp.value ? t.accent : t.bgSecondary, color: cropPreset === cp.value ? t.textInverse : t.textSecondary, cursor: 'pointer', fontSize: 10, transition: 'all 0.15s ease' }}
+                        onClick={e => { e.stopPropagation(); applyCropPreset(cp.value); }}>{cp.label}</button>
+                    ))}
+                  </div>
+                  {/* Corner handles */}
+                  <div style={{ position: 'absolute', width: 12, height: 12, top: -6, left: -6, cursor: 'nw-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'nw'); }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }} /></div>
+                  <div style={{ position: 'absolute', width: 12, height: 12, top: -6, right: -6, cursor: 'ne-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'ne'); }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }} /></div>
+                  <div style={{ position: 'absolute', width: 12, height: 12, bottom: -6, left: -6, cursor: 'sw-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'sw'); }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }} /></div>
+                  <div style={{ position: 'absolute', width: 12, height: 12, bottom: -6, right: -6, cursor: 'se-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'se'); }}><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }} /></div>
+                  {/* Edge handles */}
+                  <div style={{ position: 'absolute', height: 10, top: -5, left: 12, right: 12, cursor: 'n-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'n'); }} />
+                  <div style={{ position: 'absolute', height: 10, bottom: -5, left: 12, right: 12, cursor: 's-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 's'); }} />
+                  <div style={{ position: 'absolute', width: 10, left: -5, top: 12, bottom: 12, cursor: 'w-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'w'); }} />
+                  <div style={{ position: 'absolute', width: 10, right: -5, top: 12, bottom: 12, cursor: 'e-resize' }} onMouseDown={e => { e.stopPropagation(); startCropDrag(e, 'e'); }} />
                 </div>
               </div>
             </div>
-          )}
+          )}</div>
         </div>
 
         {/* Right panel */}
@@ -433,7 +555,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
 
                 {/* Camera Model - editable override */}
                 <div style={s(t).surfaceSection}>
-                  <label style={s(t).label}>Camera</label>
+                  <label style={s(t).label}>{tr('detail.camera')}</label>
                   <InlineEdit
                     value={photo.cameraModel || ''}
                     onSave={(val) => onUpdatePhoto(photo.id, { cameraModel: val || null })}
@@ -544,7 +666,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                       onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
                       onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
                     >{tr('detail.rotate')}</button>
-                    <button style={s(t).actionBtn} onClick={() => setCropMode(true)}
+                    <button style={s(t).actionBtn} onClick={enterCropMode}
                       onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
                       onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
                     >{tr('detail.crop')}</button>
@@ -594,9 +716,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
               <div>
                 <div style={s(t).surfaceSection}>
                   <label style={s(t).label}>{tr('detail.format')}</label>
-                  <select style={s(t).selectInput} value={exportFormat} onChange={e => setExportFormat(e.target.value as ExportFormat)}>
-                    {EXPORT_FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                  </select>
+                  <Select theme={t} value={exportFormat} onChange={v => setExportFormat(v as ExportFormat)} options={EXPORT_FORMATS.map(f => ({ value: f.value, label: f.label }))} />
                 </div>
                 <div style={s(t).surfaceSection}>
                   <label style={s(t).label}>{tr('detail.quality')}: {exportQuality}%</label>
@@ -667,14 +787,12 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   photoName: { flex: 1, fontSize: TYPO.body.size, color: t.textPrimary, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   topActions: { display: 'flex', alignItems: 'center', gap: SPACING.sm },
   iconBtn: { width: 32, height: 32, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textPrimary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: TRANSITION.all, boxShadow: 'none' },
+  actionLabelBtn: { display: 'inline-flex', alignItems: 'center', padding: `${SPACING.xs}px ${SPACING.md}px`, border: 'none', borderRadius: 10, background: t.bgSecondary, color: t.textPrimary, cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all, boxShadow: 'none', whiteSpace: 'nowrap' },
   body: { flex: 1, display: 'flex', overflow: 'hidden', background: t.bgPhotoStage },
   imageArea: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: t.bgPhotoStage, position: 'relative', overflow: 'hidden' },
-  image: { maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: 14, boxShadow: SHADOW.lg, transition: 'transform 0.05s ease-out', userSelect: 'none' },
   presetTag: { position: 'absolute', top: 12, left: 12, padding: `${SPACING.xs}px ${SPACING.md}px`, background: t.accent, borderRadius: RADIUS.sm, color: t.textInverse, fontSize: TYPO.small.size },
   refTag: { position: 'absolute', top: 12, right: 12, padding: `${SPACING.xs}px ${SPACING.md}px`, background: 'rgba(0,0,0,0.5)', borderRadius: RADIUS.sm, color: t.textInverse, fontSize: TYPO.tiny.size, border: `1px solid rgba(0,0,0,0.26)` },
-  cropOverlay: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cropBox: { position: 'absolute', border: '2px dashed rgba(255,255,255,0.92)', background: 'rgba(255,255,255,0.08)' },
-  cropPresetBtn: { padding: `${SPACING.xs}px ${SPACING.md}px`, border: 'none', borderRadius: RADIUS.sm, background: t.bgSecondary, cursor: 'pointer', fontSize: TYPO.tiny.size, transition: TRANSITION.all },
+
   panel: { width: 372, margin: `${SPACING.lg}px ${SPACING.lg}px ${SPACING.lg}px 0`, background: t.panelBg, borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 18px 40px rgba(0,0,0,0.28)' },
   tabs: { display: 'flex', padding: `0 ${SPACING.sm}px`, background: t.panelBg },
   tab: { flex: 1, padding: `${SPACING.md}px 0`, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: TYPO.caption.size, transition: TRANSITION.all, borderRadius: 12, margin: `${SPACING.xs}px ${SPACING.xs}px ${SPACING.sm}px` },

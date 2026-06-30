@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Theme, DURATION, EASING, RADIUS, SHADOW, SPACING, TYPO } from '../styles/theme';
+import { Theme, DURATION, EASING, RADIUS, SPACING, TYPO } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 
@@ -16,15 +16,22 @@ interface ToastProps {
   theme: Theme;
 }
 
+const accentColors = {
+  info: { bg: '#6f6f88', light: '#ececf2', icon: '#6f6f88' },
+  success: { bg: '#4a9b6e', light: '#eff7f2', icon: '#4a9b6e' },
+  warning: { bg: '#d49b1f', light: '#faf6ed', icon: '#d49b1f' },
+  error: { bg: '#d15555', light: '#faf3f3', icon: '#d15555' },
+};
+
+const accentColorsDark = {
+  info: { bg: '#6f6f88', light: '#32312b', icon: '#938a78' },
+  success: { bg: '#5b9977', light: '#18241e', icon: '#5b9977' },
+  warning: { bg: '#b5974c', light: '#27241c', icon: '#b5974c' },
+  error: { bg: '#bd6e68', light: '#27201f', icon: '#bd6e68' },
+};
+
 export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss, theme: t }) => {
   if (toasts.length === 0) return null;
-
-  const bgMap = {
-    info: t.accent,
-    success: t.success,
-    warning: t.warning,
-    error: t.danger,
-  };
 
   return (
     <div style={{
@@ -38,15 +45,17 @@ export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss, theme: t }) => 
       gap: SPACING.sm,
       pointerEvents: 'none',
     }}>
-      {toasts.map((toast, idx) => (
-        <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} bg={bgMap[toast.type]} theme={t} index={idx} />
+      {toasts.map((toast) => (
+        <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} theme={t} />
       ))}
     </div>
   );
 };
 
-const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void; bg: string; theme: Theme; index: number }> = ({ toast, onDismiss, bg, theme: t, index }) => {
+const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void; theme: Theme }> = ({ toast, onDismiss, theme: t }) => {
   const [exiting, setExiting] = useState(false);
+  const isDark = t.isDark;
+  const colors = isDark ? accentColorsDark : accentColors;
 
   const handleDismiss = useCallback(() => {
     setExiting(true);
@@ -58,46 +67,106 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
     return () => clearTimeout(timer);
   }, [toast.duration, handleDismiss]);
 
-  const iconMap = {
-    info: <AppIcon name="info" size={16} color={t.textInverse} />,
-    success: <AppIcon name="check" size={16} color={t.textInverse} />,
-    warning: <AppIcon name="info" size={16} color={t.textInverse} />,
-    error: <AppIcon name="x" size={16} color={t.textInverse} />,
-  };
+  const iconEl = (() => {
+    switch (toast.type) {
+      case 'success': return <AppIcon name="check" size={16} color={colors.success.icon} />;
+      case 'warning': return <AppIcon name="info" size={16} color={colors.warning.icon} />;
+      case 'error': return <AppIcon name="x" size={16} color={colors.error.icon} />;
+      default: return <AppIcon name="info" size={16} color={colors.info.icon} />;
+    }
+  })();
 
   return (
     <div style={{
-      background: `linear-gradient(180deg, ${bg}, ${bg})`,
-      color: t.textInverse,
-      padding: `${SPACING.md}px ${SPACING.xl}px`,
-      borderRadius: 14,
+      background: isDark ? t.bgCard : '#ffffff',
+      color: t.textPrimary,
+      padding: 0,
+      borderRadius: 12,
       fontSize: TYPO.body.size,
-      boxShadow: '0 18px 44px rgba(0,0,0,0.34), inset 0 1px 0 rgba(0,0,0,0.2)',
-      border: '1px solid rgba(0,0,0,0.22)',
+      boxShadow: isDark
+        ? '0 12px 40px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)'
+        : '0 8px 32px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.04)',
+      border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
       animation: exiting
         ? `toastOut ${DURATION.normal}ms ${EASING.out} forwards`
         : `toastIn ${DURATION.normal}ms ${EASING.out}`,
       display: 'flex',
-      alignItems: 'center',
-      gap: SPACING.sm,
+      alignItems: 'stretch',
       pointerEvents: 'auto',
       cursor: 'pointer',
-      minWidth: 200,
-      maxWidth: 400,
+      minWidth: 240,
+      maxWidth: 380,
+      overflow: 'hidden',
     }}
       onClick={handleDismiss}
     >
-      <span style={{ display: 'inline-flex' }}>{iconMap[toast.type]}</span>
-      <span style={{ flex: 1 }}>{toast.message}</span>
-      <button style={{
-        background: 'rgba(0,0,0,0.18)',
-        border: 'none',
-        borderRadius: 10,
-        color: t.textInverse,
-        cursor: 'pointer',
-        padding: `2px ${SPACING.sm}px`,
+      {/* Left accent bar */}
+      <div style={{
+        width: 4,
+        background: colors[toast.type].bg,
+        flexShrink: 0,
+      }} />
+
+      {/* Icon area */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: `${SPACING.md}px 0 ${SPACING.md}px ${SPACING.lg}px`,
+        flexShrink: 0,
+      }}>
+        <div style={{
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          background: colors[toast.type].light,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {iconEl}
+        </div>
+      </div>
+
+      {/* Message */}
+      <div style={{
+        flex: 1,
+        padding: `${SPACING.md}px ${SPACING.lg}px`,
+        display: 'flex',
+        alignItems: 'center',
         fontSize: TYPO.small.size,
-      }} onClick={e => { e.stopPropagation(); handleDismiss(); }}><AppIcon name="close" size={12} color={t.textInverse} /></button>
+        color: t.textPrimary,
+        lineHeight: 1.4,
+      }}>
+        {toast.message}
+      </div>
+
+      {/* Close button */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        padding: `${SPACING.sm}px ${SPACING.sm}px 0 0`,
+        flexShrink: 0,
+      }}>
+        <button style={{
+          background: 'transparent',
+          border: 'none',
+          borderRadius: 8,
+          color: t.textTertiary,
+          cursor: 'pointer',
+          padding: 4,
+          fontSize: TYPO.small.size,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: `background ${DURATION.fast}ms ${EASING.out}`,
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          onClick={e => { e.stopPropagation(); handleDismiss(); }}>
+          <AppIcon name="close" size={12} color={t.textTertiary} />
+        </button>
+      </div>
     </div>
   );
 };

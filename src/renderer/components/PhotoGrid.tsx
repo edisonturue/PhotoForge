@@ -40,14 +40,17 @@ function useProgressiveImage(photoId: string, fallbackSrc: string) {
 
 interface PhotoGridProps {
   photos: PhotoFile[];
+  refreshKey?: number;
   selectedIds: Set<string>;
-  onSelect: (id: string, multi?: boolean) => void;
+  onSelect: (id: string, multi?: boolean, shift?: boolean) => void;
   onOpenDetail: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onDelete?: (ids: string[]) => void;
   onSetRating?: (photoId: string, rating: number) => void;
   onCompare?: () => void;
   theme: Theme;
+  manageMode?: boolean;
+  onManageModeChange?: (manage: boolean) => void;
   thumbnailSize: number;
   showFileExtensions: boolean;
   showGridInfo: boolean;
@@ -80,7 +83,7 @@ const ProgressiveImage: React.FC<{ photo: PhotoFile; style: React.CSSProperties 
 };
 
 export const PhotoGrid: React.FC<PhotoGridProps> = ({
-  photos, selectedIds, onSelect, onOpenDetail, onToggleFavorite, onDelete, onCompare, onSetRating,
+  photos, refreshKey, selectedIds, onSelect, onOpenDetail, onToggleFavorite, onDelete, onCompare, onSetRating, manageMode, onManageModeChange,
   theme: t, thumbnailSize, showFileExtensions, showGridInfo,
 }) => {
   const { t: tr } = useI18n();
@@ -150,7 +153,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
       </div>
 
       {/* Scrollable grid */}
-      <div style={s(t).scrollArea}>
+      <div key={refreshKey} style={s(t).scrollArea}>
       <div style={{ ...s(t).grid, gridTemplateColumns: `repeat(auto-fill, minmax(${colWidth}px, 1fr))` }}>
         {photos.map((photo, idx) => {
           const isSelected = selectedIds.has(photo.id);
@@ -164,15 +167,34 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
               outline: 'none',
               boxShadow: isSelected ? `0 0 0 3px ${t.accent}` : (isHovered ? SHADOW.md : SHADOW.sm),
               transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-              background: isSelected ? t.selectedBg : t.bgPhotoSurface,
+              background: (manageMode && isSelected) ? t.selectedBg : t.bgPhotoSurface,
               animation: `fadeInUp ${DURATION.normal}ms ${EASING.out} ${Math.min(idx * 30, 300)}ms both`,
+              position: 'relative',
             }}
-              onClick={e => { e.stopPropagation(); onSelect(photo.id, e.metaKey || e.ctrlKey); }}
-              onDoubleClick={() => onOpenDetail(photo.id)}
+              onClick={e => { e.stopPropagation(); if (manageMode) { onSelect(photo.id, e.metaKey || e.ctrlKey, e.shiftKey); } else { onOpenDetail(photo.id); } }}
+              onDoubleClick={() => { if (manageMode) { onSelect(photo.id); } else { onOpenDetail(photo.id); } }}
               onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, photoId: photo.id }); }}
               onMouseEnter={() => setHoveredId(photo.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
+              {/* Selection checkbox overlay — only visible in manageMode */}
+              {manageMode && (isHovered || isSelected) && (
+                <div style={{
+                  position: 'absolute', top: SPACING.sm, right: SPACING.sm, zIndex: 5,
+                  width: 24, height: 24, borderRadius: RADIUS.pill,
+                  background: isSelected ? t.accent : 'rgba(0,0,0,0.35)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: `background ${DURATION.fast}ms ${EASING.out}, transform ${DURATION.fast}ms ${EASING.spring}`,
+                  border: isSelected ? 'none' : '2px solid rgba(255,255,255,0.7)',
+                  pointerEvents: 'none',
+                }}>
+                  {isSelected && (
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={t.textInverse} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+              )}
               <div style={{ ...s(t).thumbWrap, aspectRatio: '3/2' }}>
                 <ProgressiveImage
                   photo={photo}
@@ -274,8 +296,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   wrapper: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage, minHeight: 0 },
-  controls: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgPhotoStage, flexShrink: 0, borderBottom: `1px solid ${t.borderLight}` },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px`, minHeight: 0 },
+  controls: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.sm}px 0`, background: t.bgPhotoStage, flexShrink: 0, borderBottom: `1px solid ${t.borderLight}` },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 },
   grid: { display: 'grid', gap: SPACING.lg },
   card: {
     background: t.bgPhotoSurface, borderRadius: RADIUS.md, overflow: 'hidden',

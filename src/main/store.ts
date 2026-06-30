@@ -33,6 +33,7 @@ export class PhotoStore {
     this.loadSettings();
     this.loadCollections();
     this.loadRecentImports();
+    this.cleanupRecentImports();
   }
 
   private ensureDirs(): void {
@@ -219,6 +220,7 @@ export class PhotoStore {
     }
     this.photos.delete(id);
     this.save();
+    try { this.removePhotoFromRecentImports(id); } catch {}
     return true;
   }
 
@@ -402,6 +404,41 @@ export class PhotoStore {
       .filter((p): p is PhotoFile => p !== undefined);
   }
 
+
+  private cleanupRecentImports(): void {
+    for (let i = this.recentImports.length - 1; i >= 0; i--) {
+      const batch = this.recentImports[i];
+      const validIds = batch.photoIds.filter(id => this.photos.has(id));
+      if (validIds.length !== batch.photoIds.length || validIds.length === 0) {
+        batch.photoIds = validIds;
+        batch.count = validIds.length;
+      }
+      if (batch.count === 0) {
+        this.recentImports.splice(i, 1);
+      }
+    }
+    this.saveRecentImports();
+  }
+
+  private removePhotoFromRecentImports(photoId: string): void {
+    let changed = false;
+    for (let i = this.recentImports.length - 1; i >= 0; i--) {
+      const batch = this.recentImports[i];
+      const idx = batch.photoIds.indexOf(photoId);
+      if (idx !== -1) {
+        batch.photoIds.splice(idx, 1);
+        batch.count = batch.photoIds.length;
+        changed = true;
+      }
+      if (batch.count === 0) {
+        this.recentImports.splice(i, 1);
+      }
+    }
+    if (changed) {
+      this.saveRecentImports();
+    }
+  }
+
   getMissingReferences(): Array<{ id: string; fileName: string; filePath: string }> {
     const missing: Array<{ id: string; fileName: string; filePath: string }> = [];
     for (const photo of this.photos.values()) {
@@ -412,3 +449,4 @@ export class PhotoStore {
     return missing;
   }
 }
+

@@ -3,6 +3,7 @@ import { AppSettings, ExportFormat } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, SHADOW, TRANSITION } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { Select } from './Select';
 
 interface SettingsViewProps {
  onBack: () => void;
@@ -43,7 +44,7 @@ const keycapStyle = (t: Theme): React.CSSProperties => ({
 });
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsChange, settings, theme: t }) => {
- const { t: tr } = useI18n();
+ const { t: tr, lang } = useI18n();
  const [saved, setSaved] = useState(false);
  const [clearing, setClearing] = useState(false);
  const [activeSection, setActiveSection] = useState<SettingsSection>('general');
@@ -189,28 +190,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        >
         <SettingsFieldGroup theme={t} columns={3}>
          <FieldCard theme={t} label={tr('settings.language')} >
-          <select style={styles.selectInput(t)} value={settings.language} onChange={e => update({ language: e.target.value as any })}>
-           <option value="zh-CN">简体中文</option>
-           <option value="en-US">English</option>
-          </select>
+          <Select theme={t} value={settings.language} onChange={v => update({ language: v as any })} options={[
+            { value: 'zh-CN', label: '简体中文' },
+            { value: 'en-US', label: lang === 'zh-CN' ? '英文' : 'English' },
+          ]} />
          </FieldCard>
          <FieldCard theme={t} label={tr('settings.theme')} >
-          <select style={styles.selectInput(t)} value={settings.theme} onChange={e => update({ theme: e.target.value as any })}>
-           <option value="light">{tr('settings.themeLight')}</option>
-           <option value="dark">{tr('settings.themeDark')}</option>
-           <option value="system">{tr('settings.themeSystem')}</option>
-           <option value="vintage">{tr('settings.themeVintage')}</option>
-           <option value="graphite-gold">{tr('settings.themeGraphiteGold')}</option>
-           <option value="slate-blue">{tr('settings.themeSlateBlue')}</option>
-           <option value="merlot">{tr('settings.themeMerlot')}</option>
-          </select>
+          <Select theme={t} value={settings.theme} onChange={v => update({ theme: v as any })} options={[
+            { value: 'light', label: tr('settings.themeLight') },
+            { value: 'dark', label: tr('settings.themeDark') },
+            { value: 'system', label: tr('settings.themeSystem') },
+            { value: 'vintage', label: tr('settings.themeVintage') },
+            { value: 'graphite-gold', label: tr('settings.themeGraphiteGold') },
+            { value: 'slate-blue', label: tr('settings.themeSlateBlue') },
+            { value: 'merlot', label: tr('settings.themeMerlot') },
+          ]} />
          </FieldCard>
          <FieldCard theme={t} label={tr('settings.colorSpace')} >
-          <select style={styles.selectInput(t)} value={settings.colorSpace} onChange={e => update({ colorSpace: e.target.value as any })}>
-           <option value="srgb">{tr('colorSpace.srgb')}</option>
-           <option value="adobe-rgb">{tr('colorSpace.adobe-rgb')}</option>
-           <option value="prophoto">{tr('colorSpace.prophoto')}</option>
-          </select>
+          <Select theme={t} value={settings.colorSpace} onChange={v => update({ colorSpace: v as any })} options={[
+            { value: 'srgb', label: tr('colorSpace.srgb') },
+            { value: 'adobe-rgb', label: tr('colorSpace.adobe-rgb') },
+            { value: 'prophoto', label: tr('colorSpace.prophoto') },
+          ]} />
          </FieldCard>
         </SettingsFieldGroup>
        </SettingsPanel>
@@ -225,10 +226,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        >
         <SettingsFieldGroup theme={t} columns={2}>
          <FieldCard theme={t} label={tr('settings.importMode')} hint={settings.importMode === 'copy' ? tr('settings.copyHint') : tr('settings.referenceHint')}>
-          <select style={styles.selectInput(t)} value={settings.importMode} onChange={e => update({ importMode: e.target.value as any })}>
-           <option value="copy">{tr('settings.importCopy')}</option>
-           <option value="reference">{tr('settings.importReference')}</option>
-          </select>
+          <Select theme={t} value={settings.importMode} onChange={v => update({ importMode: v as any })} options={[
+            { value: "copy", label: tr("settings.importCopy") },
+            { value: "reference", label: tr("settings.importReference") },
+          ]} />
          </FieldCard>
          <FieldCard
           theme={t}
@@ -254,11 +255,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        >
         <SettingsFieldGroup theme={t} columns={2}>
          <FieldCard theme={t} label={tr('settings.exportFormat')} >
-          <select style={styles.selectInput(t)} value={settings.exportFormat} onChange={e => update({ exportFormat: e.target.value as ExportFormat })}>
-           {EXPORT_FORMATS.map(format => (
-            <option key={format.value} value={format.value}>{format.label}</option>
-           ))}
-          </select>
+          <Select theme={t} value={settings.exportFormat} onChange={v => update({ exportFormat: v as ExportFormat })} options={EXPORT_FORMATS.map(f => ({ value: f.value, label: f.label }))} />
          </FieldCard>
          <FieldCard theme={t} label={tr('settings.exportQuality')} >
           <div style={styles.sliderRow}>
@@ -309,11 +306,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        >
         <SettingsFieldGroup theme={t} columns={3}>
          <FieldCard theme={t} label={tr('settings.thumbnailSize')} hint={tr('settings.thumbnailSizeHint')}>
-          <select style={styles.selectInput(t)} value={settings.thumbnailSize} onChange={e => update({ thumbnailSize: Number(e.target.value) })}>
-           <option value={200}>{tr('settings.thumbnailSmall')}</option>
-           <option value={400}>{tr('settings.thumbnailMedium')}</option>
-           <option value={800}>{tr('settings.thumbnailLarge')}</option>
-          </select>
+          <Select theme={t} value={String(settings.thumbnailSize)} onChange={v => update({ thumbnailSize: Number(v) })} options={[
+            { value: "200", label: tr("settings.thumbnailSmall") },
+            { value: "400", label: tr("settings.thumbnailMedium") },
+            { value: "800", label: tr("settings.thumbnailLarge") },
+          ]} />
          </FieldCard>
          <FieldCard theme={t} label={tr('settings.showFileExtensions')} >
           <ToggleRow theme={t} label={tr('settings.showFileExtensions')} >
@@ -380,12 +377,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           </div>
          </FieldCard>
          <FieldCard theme={t} label={tr('settings.maxProcessMemory')} hint={tr('settings.maxMemoryHint')}>
-          <select style={styles.selectInput(t)} value={settings.maxProcessMemory} onChange={e => update({ maxProcessMemory: Number(e.target.value) })}>
-           <option value={256}>256 MB</option>
-           <option value={512}>512 MB</option>
-           <option value={1024}>1 GB</option>
-           <option value={2048}>2 GB</option>
-          </select>
+          <Select theme={t} value={String(settings.maxProcessMemory)} onChange={v => update({ maxProcessMemory: Number(v) })} options={[
+            { value: "256", label: "256 MB" },
+            { value: "512", label: "512 MB" },
+            { value: "1024", label: "1 GB" },
+            { value: "2048", label: "2 GB" },
+          ]} />
          </FieldCard>
         </SettingsFieldGroup>
 
@@ -1040,7 +1037,7 @@ interface LogEntry {
 }
 
 const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
- const { t: tr } = useI18n();
+ const { t: tr, lang } = useI18n();
  const [dates, setDates] = useState<string[]>([]);
  const [selectedDate, setSelectedDate] = useState<string>('');
  const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -1126,16 +1123,14 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
     title={tr('settings.logsTitle')}
    >
     <div style={styles.logsToolbar}>
-     <select style={{ ...styles.selectInput(t), maxWidth: 180 }} value={selectedDate} onChange={e => setSelectedDate(e.target.value)}>
-      {dates.map(date => <option key={date} value={date}>{date}</option>)}
-     </select>
-     <select style={{ ...styles.selectInput(t), maxWidth: 120 }} value={levelFilter} onChange={e => setLevelFilter(e.target.value)}>
-      <option value="">{tr('settings.allLevels')}</option>
-      <option value="error">Error</option>
-      <option value="warn">Warn</option>
-      <option value="info">Info</option>
-      <option value="debug">Debug</option>
-     </select>
+     <Select theme={t} value={selectedDate} onChange={v => setSelectedDate(v)} options={dates.map(d => ({ value: d, label: d }))} style={{ maxWidth: 180 }} />
+     <Select theme={t} value={levelFilter} onChange={v => setLevelFilter(v)} options={[
+      { value: "", label: tr("settings.allLevels") },
+      { value: "error", label: tr("settings.logLevelError") },
+      { value: "warn", label: tr("settings.logLevelWarn") },
+      { value: "info", label: tr("settings.logLevelInfo") },
+      { value: "debug", label: tr("settings.logLevelDebug") },
+     ]} style={{ maxWidth: 120 }} />
      <input
       style={{ ...styles.textInput(t), maxWidth: 150 }}
       placeholder={tr('settings.modulePlaceholder')}

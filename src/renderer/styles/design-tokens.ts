@@ -27,21 +27,21 @@ export const SHADOW = {
   md: '0 4px 12px rgba(0,0,0,0.1)',
   lg: '0 8px 24px rgba(0,0,0,0.15)',
   xl: '0 16px 48px rgba(0,0,0,0.2)',
-  focus: '0 0 0 3px rgba(111,111,136,0.3)',
-  focusDark: '0 0 0 3px rgba(147,138,120,0.35)',
+  focus: '0 0 0 3px rgba(124,58,237,0.25)',
+  focusDark: '0 0 0 3px rgba(167,139,250,0.35)',
 } as const;
 
 // ========== Typography Scale ==========
 export const TYPO = {
   caption: { size: 11, weight: 400, lineHeight: 1.4 },
-  body: { size: 13, weight: 400, lineHeight: 1.5 },
-  bodyBold: { size: 13, weight: 500, lineHeight: 1.5 },
-  subheading: { size: 15, weight: 500, lineHeight: 1.4 },
+  body: { size: 14, weight: 500, lineHeight: 1.6 },
+  bodyBold: { size: 14, weight: 600, lineHeight: 1.6 },
+  subheading: { size: 16, weight: 600, lineHeight: 1.4 },
   heading: { size: 18, weight: 600, lineHeight: 1.3 },
   display: { size: 24, weight: 700, lineHeight: 1.2 },
   // Additional sizes used in the app
   tiny: { size: 10, weight: 400, lineHeight: 1.3 },
-  small: { size: 12, weight: 400, lineHeight: 1.4 },
+  small: { size: 13, weight: 500, lineHeight: 1.4 },
   large: { size: 17, weight: 600, lineHeight: 1.3 },
 } as const;
 
@@ -169,9 +169,9 @@ export const KEYFRAMES = {
   /** Pulse glow for applied preset */
   pulseGlow: `
     @keyframes pulseGlow {
-      0% { box-shadow: 0 0 0 0 rgba(111,111,136,0.4); }
-      70% { box-shadow: 0 0 0 8px rgba(111,111,136,0); }
-      100% { box-shadow: 0 0 0 0 rgba(111,111,136,0); }
+      0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.3); }
+      70% { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
+      100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
     }
   `,
   /** Slide in from right */
@@ -207,6 +207,28 @@ export const KEYFRAMES = {
     @keyframes float {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
+    }
+  `,
+  /** Scale out for modal/panel close */
+  scaleOut: `
+    @keyframes scaleOut {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.95); }
+    }
+  `,
+  /** Checkmark draw animation for success states */
+  checkmark: `
+    @keyframes checkmark {
+      0% { stroke-dashoffset: 100; }
+      100% { stroke-dashoffset: 0; }
+    }
+  `,
+  /** Success pulse glow */
+  successPulse: `
+    @keyframes successPulse {
+      0% { box-shadow: 0 0 0 0 rgba(74,155,110,0.5); }
+      70% { box-shadow: 0 0 0 20px rgba(74,155,110,0); }
+      100% { box-shadow: 0 0 0 0 rgba(74,155,110,0); }
     }
   `,
 } as const;
