@@ -4,6 +4,7 @@ import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, SHADOW, TRANSITION } fr
 import { useI18n } from '../i18n';
 import { ContextMenu, ContextMenuItem } from './ContextMenu';
 import { AppIcon } from './AppIcon';
+import { cleanCameraModel } from '../../shared/constants';
 
 // Progressive image loading: shows thumbnail first, then loads preview
 function useProgressiveImage(photoId: string, fallbackSrc: string) {
@@ -261,7 +262,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
                     <span style={{ margin: `0 ${SPACING.xs}px` }}>·</span>
                     <span>{formatFileSize(photo.fileSize)}</span>
                   </div>
-                  {photo.cameraModel && <div style={s(t).camera}>{photo.cameraModel}</div>}
+                  {photo.cameraModel && <div style={s(t).camera}>{cleanCameraModel(photo.cameraModel) || photo.cameraModel}</div>}
                 </div>
               ) : (
                 <div style={{ ...s(t).info, padding: `${SPACING.sm}px ${SPACING.lg}px` }}>

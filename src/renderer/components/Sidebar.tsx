@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FilterCriteria, PhotoFile, ImportBatch } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
-import { COLOR_LABEL_COLORS } from '../../shared/constants';
+import { cleanCameraModel, COLOR_LABEL_COLORS } from '../../shared/constants';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 
@@ -34,7 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
     for (const photo of photos) {
       formatCounts[photo.fileFormat] = (formatCounts[photo.fileFormat] || 0) + 1;
       if (photo.cameraModel) {
-        cameraCounts[photo.cameraModel] = (cameraCounts[photo.cameraModel] || 0) + 1;
+        const cm = cleanCameraModel(photo.cameraModel) || photo.cameraModel || '';
+        if (cm) cameraCounts[cm] = (cameraCounts[cm] || 0) + 1;
       }
     }
     return {
@@ -191,7 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
           expanded={expanded.cameras}
           onToggle={() => setExpanded(prev => ({ ...prev, cameras: !prev.cameras }))}
         >
-          {Object.entries(stats.cameraCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([model, count]) => {
+          {Object.entries(stats.cameraCounts).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([model, count]) => {
             const active = filter.cameraModels.includes(model);
             return (
               <button
@@ -273,6 +274,7 @@ const styles = {
   sidebar: (t: Theme): React.CSSProperties => ({
     width: SIDEBAR_WIDTH,
     minWidth: SIDEBAR_WIDTH,
+    height: '100%',
     background: t.sidebarBg,
     padding: `${SPACING.md}px 0`,
     display: 'flex',

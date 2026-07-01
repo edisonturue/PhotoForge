@@ -21,6 +21,7 @@ import { useHistory, createUpdateEntry, createBatchEntry } from './hooks/useHist
 import { getTheme, Theme, SPACING, RADIUS, SHADOW, TYPO, DURATION, EASING, TRANSITION, COMPONENT_HEIGHT } from './styles/theme';
 import { KEYFRAMES } from './styles/design-tokens';
 import { useI18n } from './i18n';
+import { cleanCameraModel } from '../shared/constants';
 
 // ========== Module System ==========
 type Module = 'browse' | 'edit' | 'albums' | 'statistics' | 'presets' | 'settings' | 'compare' | 'dategroup';
@@ -307,7 +308,7 @@ export const App: React.FC = () => {
     if (filter.onlyFavorites) result = result.filter(p => p.isFavorite);
     if (filter.ratingMin > 0) result = result.filter(p => p.rating >= filter.ratingMin);
     if (filter.colorLabels.length > 0 && !filter.colorLabels.includes('none')) result = result.filter(p => filter.colorLabels.includes(p.colorLabel));
-    if (filter.cameraModels.length > 0) result = result.filter(p => p.cameraModel && filter.cameraModels.includes(p.cameraModel));
+    if (filter.cameraModels.length > 0) result = result.filter(p => p.cameraModel && filter.cameraModels.includes(cleanCameraModel(p.cameraModel) || p.cameraModel));
     if (filter.hasPreset === true) result = result.filter(p => p.presetApplied !== null);
     result.sort((a, b) => {
       let aVal: any, bVal: any;
@@ -896,6 +897,7 @@ export const App: React.FC = () => {
         <div style={{
           width: showSidebar ? SIDEBAR_WIDTH : 0,
           minWidth: showSidebar ? SIDEBAR_WIDTH : 0,
+          height: '100%',
           overflow: 'hidden',
           transition: `width ${DURATION.normal}ms ${EASING.inOut}, margin ${DURATION.normal}ms ${EASING.inOut}`,
           flexShrink: 0,

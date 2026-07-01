@@ -3,6 +3,7 @@ import { PhotoFile } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, SHADOW, TRANSITION, DURATION, EASING } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { cleanCameraModel } from '../../shared/constants';
 
 interface StatisticsViewProps {
   photos: PhotoFile[];
@@ -27,7 +28,10 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({ photos, onBack, 
 
     for (const photo of photos) {
       formatCounts[photo.fileFormat] = (formatCounts[photo.fileFormat] || 0) + 1;
-      if (photo.cameraModel) cameraCounts[photo.cameraModel] = (cameraCounts[photo.cameraModel] || 0) + 1;
+      if (photo.cameraModel) {
+        const cmStat = cleanCameraModel(photo.cameraModel) || photo.cameraModel || '';
+        if (cmStat) cameraCounts[cmStat] = (cameraCounts[cmStat] || 0) + 1;
+      }
       ratingCounts[photo.rating] = (ratingCounts[photo.rating] || 0) + 1;
       labelCounts[photo.colorLabel] = (labelCounts[photo.colorLabel] || 0) + 1;
       if (photo.isFavorite) favoriteCount++;

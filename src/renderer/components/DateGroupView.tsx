@@ -3,6 +3,7 @@ import { PhotoFile } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { cleanCameraModel } from '../../shared/constants';
 
 interface DateGroupViewProps {
   photos: PhotoFile[];
@@ -163,7 +164,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelect, 
                   </div>
                   <div style={{ fontSize: 9, color: t.textTertiary }}>
                     {(() => { try { if (!photo.dateTaken) return ''; const d = new Date(photo.dateTaken); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })()}
-                    {' '}{photo.cameraModel || ''}
+                    {' '}{cleanCameraModel(photo.cameraModel) || ''}
                   </div>
                 </div>
                 {photo.isFavorite && (

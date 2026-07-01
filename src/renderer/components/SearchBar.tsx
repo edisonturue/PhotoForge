@@ -3,6 +3,7 @@ import { PhotoFile } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, SHADOW, TRANSITION, Z_INDEX } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
+import { cleanCameraModel } from '../../shared/constants';
 
 interface SearchBarProps {
   photos: PhotoFile[];
@@ -257,7 +258,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
                 }}>{highlightMatch(photo.fileName, query)}</div>
                 <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, display: 'flex', gap: SPACING.sm }}>
                   <span>{photo.fileFormat}</span>
-                  {photo.cameraModel && <span>· {photo.cameraModel}</span>}
+                  {photo.cameraModel && <span>· {cleanCameraModel(photo.cameraModel)}</span>}
                   {photo.dateTaken && <span>· {new Date(photo.dateTaken).toLocaleDateString()}</span>}
                 </div>
               </div>
