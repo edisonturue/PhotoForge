@@ -253,40 +253,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
         </SettingsFieldGroup>
         <SettingsFieldGroup theme={t} columns={2}>
          <FieldCard theme={t} label={tr('settings.defaultNamingTemplate')}>
-          <div style={styles.namingPanel(t)}>
-           {[
-            { value: '{filename}', label: tr('export.namingPresetFilename') },
-            { value: '{date}_{filename}', label: tr('export.namingPresetDateFilename') },
-            { value: '{camera}_{filename}', label: tr('export.namingPresetCameraFilename') },
-            { value: '{filename}_{preset}', label: tr('export.namingPresetFilenamePreset') },
-            { value: '{year}-{month}-{day}_{filename}', label: tr('export.namingPresetFullDateFilename') },
-           ].map(opt => {
-            const isActive = settings.namingTemplate === opt.value;
-            return (
-             <button
-              key={opt.value}
-              type='button'
-              style={styles.namingCard(t, isActive)}
-              onClick={() => update({ namingTemplate: opt.value })}
-              onMouseEnter={e => {
-               if (!isActive) {
-                e.currentTarget.style.borderColor = t.accent;
-                e.currentTarget.style.background = t.bgHover;
-               }
-              }}
-              onMouseLeave={e => {
-               if (!isActive) {
-                e.currentTarget.style.borderColor = t.borderLight;
-                e.currentTarget.style.background = t.bgPrimary;
-               }
-              }}
-             >
-              <span style={styles.namingCardTemplate(t, isActive)}>{opt.value}</span>
-              <span style={styles.namingCardLabel(t, isActive)}>{opt.label}</span>
-             </button>
-            );
-           })}
-          </div>
+          <NamingTemplateDropdown
+            theme={t}
+            value={settings.namingTemplate}
+            onChange={v => update({ namingTemplate: v })}
+            tr={tr}
+          />
           <div style={styles.previewChip(t)}>
            <span style={styles.previewLabel(t)}>{tr('export.namingPreview')}</span>
            <span style={styles.previewValue(t)}>{namingPreview}.jpg</span>
@@ -501,6 +473,137 @@ const ToggleRow: React.FC<{
   <div style={styles.toggleControl(t)}>{children}</div>
  </div>
 );
+/* Naming template selector — rich dropdown panel */
+const namingTemplates = [
+  { value: '{filename}', labelKey: 'export.namingPresetFilename' },
+  { value: '{date}_{filename}', labelKey: 'export.namingPresetDateFilename' },
+  { value: '{camera}_{filename}', labelKey: 'export.namingPresetCameraFilename' },
+  { value: '{filename}_{preset}', labelKey: 'export.namingPresetFilenamePreset' },
+  { value: '{year}-{month}-{day}_{filename}', labelKey: 'export.namingPresetFullDateFilename' },
+] as const;
+
+const NamingTemplateDropdown: React.FC<{
+  theme: Theme;
+  value: string;
+  onChange: (v: string) => void;
+  tr: (key: string) => string;
+}> = ({ theme: t, value, onChange, tr }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const toggle = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setMenuPos({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        right: 'auto',
+        width: Math.max(rect.width, 300),
+        zIndex: 9999,
+      });
+    }
+    setOpen(prev => !prev);
+  };
+
+  const selected = namingTemplates.find(o => o.value === value);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        style={{
+          width: '100%',
+          minHeight: 44,
+          padding: '10px 14px',
+          border: `1.5px solid ${t.border}`,
+          borderRadius: 12,
+          background: t.bgInput,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: SPACING.sm,
+          transition: TRANSITION.all,
+          textAlign: 'left',
+        }}
+        onClick={toggle}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = t.borderFocus; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; }}
+      >
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ fontSize: TYPO.small.size, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', color: t.textPrimary, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {selected?.value || value}
+          </div>
+          <div style={{ fontSize: TYPO.tiny.size, color: t.textSecondary, marginTop: 2 }}>
+            {selected ? tr(selected.labelKey) : ''}
+          </div>
+        </div>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ flexShrink: 0, transition: `transform 150ms ease-out`, transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <path d="M1 1L5 5L9 1" stroke={t.textSecondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          style={{
+            ...menuPos,
+            background: t.dropdownBg,
+            border: `1px solid ${t.borderLight}`,
+            borderRadius: RADIUS.md,
+            padding: SPACING.xs,
+            boxShadow: SHADOW.lg,
+            animation: `fadeInUp 150ms ease-out`,
+            maxHeight: 320,
+            overflowY: 'auto',
+          }}
+        >
+          {namingTemplates.map(opt => {
+            const isActive = value === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: `${SPACING.sm}px ${SPACING.lg}px`,
+                  border: 'none',
+                  borderRadius: RADIUS.sm,
+                  background: isActive ? t.accentLight : 'transparent',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: TRANSITION.all,
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.bgHover; }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+              >
+                <div style={{ fontSize: TYPO.small.size, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.textPrimary }}>
+                  {opt.value}
+                </div>
+                <div style={{ fontSize: TYPO.tiny.size, color: isActive ? t.accent : t.textTertiary, marginTop: 2 }}>
+                  {tr(opt.labelKey)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 const styles = {
  container: (t: Theme): React.CSSProperties => ({
   flex: 1,
@@ -770,42 +873,7 @@ const styles = {
   boxShadow: 'none',
   outline: 'none',
   }),
- namingPanel: (t: Theme): React.CSSProperties => ({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: SPACING.sm,
- }),
- namingCard: (t: Theme, active: boolean): React.CSSProperties => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: SPACING.xs,
-  padding: SPACING.lg + "px " + SPACING.sm + "px",
-  borderRadius: RADIUS.md,
-  border: "1.5px solid " + (active ? t.accent : t.borderLight),
-  background: active ? t.accentBg : t.bgPrimary,
-  cursor: 'pointer',
-  textAlign: 'center',
-  transition: TRANSITION.all,
-  outline: 'none',
-  minHeight: 48,
- }),
- namingCardTemplate: (t: Theme, active: boolean): React.CSSProperties => ({
-  fontSize: TYPO.small.size,
-  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-  fontWeight: active ? 600 : 400,
-  color: active ? t.accent : t.textPrimary,
-  lineHeight: 1.3,
-  textAlign: 'center',
- }),
- namingCardLabel: (t: Theme, active: boolean): React.CSSProperties => ({
-  fontSize: TYPO.tiny.size,
-  fontWeight: 400,
-  color: active ? t.accent : t.textTertiary,
-  lineHeight: 1.3,
-  textAlign: 'center',
- }),
+
  previewChip: (t: Theme): React.CSSProperties => ({
   display: 'flex',
   flexDirection: 'column',
