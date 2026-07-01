@@ -4,7 +4,6 @@ import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } fr
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 import { DateGroupView } from './DateGroupView';
-import { cleanCameraModel } from '../../shared/constants';
 
 interface SmartAlbumViewProps {
   photos: PhotoFile[];
@@ -152,7 +151,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
                 </div>
                 <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px` }}>
                   <div style={{ fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.fileName}</div>
-                  <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {cleanCameraModel(photo.cameraModel) || '—'}</div>
+                  <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {photo.cameraModel || '—'}</div>
                 </div>
               </div>
             ))}

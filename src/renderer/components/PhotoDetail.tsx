@@ -7,7 +7,6 @@ import { CanvasRenderer, useEffectiveAdjustments } from './CanvasRenderer';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 import { Select } from './Select';
-import { cleanCameraModel } from '../../shared/constants';
 
 // ========== Image Blob / File URL Cache (LRU bounded) ==========
 /**
@@ -609,7 +608,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
     return template
       .replace('{filename}', photo.fileName.replace(/\.[^.]+$/, ''))
       .replace('{date}', photo.dateTaken ? photo.dateTaken.slice(0, 10) : 'unknown')
-      .replace('{camera}', cleanCameraModel(photo.cameraModel) || photo.cameraModel || 'unknown')
+      .replace('{camera}', photo.cameraModel || 'unknown')
       .replace('{preset}', appliedPreset?.name || 'none')
       .replace('{index}', '1')
       .replace('{rating}', String(photo.rating));
@@ -1038,7 +1037,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
                     [tr('detail.aperture'), photo.aperture ? `f/${photo.aperture}` : '—'],
                     [tr('detail.shutter'), photo.shutterSpeed || '—'],
                     [tr('detail.focal'), photo.focalLength ? `${photo.focalLength}mm` : '—'],
-                    ['Camera', cleanCameraModel(photo.cameraModel) || '—'],
+                    ['Camera', photo.cameraModel || '—'],
                     ['Lens', photo.lensModel || '—'],
                     [tr('detail.editDate'), photo.dateTaken ? new Date(photo.dateTaken).toLocaleString() : '—'],
                   ].map(([k, v]) => (

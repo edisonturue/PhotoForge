@@ -9,7 +9,7 @@ import {
   PhotoFile,
 } from '../shared/types';
 import {
-  ALL_SUPPORTED_FORMATS, DEFAULT_THUMBNAIL_SIZE,
+  ALL_SUPPORTED_FORMATS, DEFAULT_THUMBNAIL_SIZE, cleanCameraModel,
   THUMBNAILS_DIR, SUPPORTED_FORMAT_LABELS,
 } from '../shared/constants';
 
@@ -92,7 +92,7 @@ export class PhotoImporter {
           height: metadata.height || 0,
           dateTaken: metadata.dateTaken || null,
           dateModified: (await stat(filePath)).mtime.toISOString(),
-          cameraModel: metadata.cameraModel || null,
+          cameraModel: cleanCameraModel(metadata.cameraModel || null),
           lensModel: metadata.lensModel || null,
           iso: metadata.iso || null,
           aperture: metadata.aperture || null,

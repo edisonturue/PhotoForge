@@ -3,7 +3,6 @@ import { PhotoFile } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, SHADOW, TRANSITION } from '../styles/theme';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
-import { cleanCameraModel } from '../../shared/constants';
 
 interface CompareViewProps {
   photos: PhotoFile[];
@@ -105,7 +104,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ photos, onBack, theme:
                 </div>
                 <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgCard }}>
                   <div style={{ fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.fileName}</div>
-                  <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {cleanCameraModel(photo.cameraModel) || '—'}</div>
+                  <div style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{photo.fileFormat} · {photo.cameraModel || '—'}</div>
                   {photo.presetApplied && (
                     <div style={{ fontSize: TYPO.tiny.size, color: t.accent, display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
                       <AppIcon name="sparkles" size={10} color={t.accent} />

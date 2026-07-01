@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FilterCriteria, PhotoFile, ImportBatch } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
-import { cleanCameraModel, COLOR_LABEL_COLORS } from '../../shared/constants';
+import { COLOR_LABEL_COLORS } from '../../shared/constants';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 
@@ -34,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
     for (const photo of photos) {
       formatCounts[photo.fileFormat] = (formatCounts[photo.fileFormat] || 0) + 1;
       if (photo.cameraModel) {
-        const cm = cleanCameraModel(photo.cameraModel) || photo.cameraModel || '';
+        const cm = photo.cameraModel || '';
         if (cm) cameraCounts[cm] = (cameraCounts[cm] || 0) + 1;
       }
     }
