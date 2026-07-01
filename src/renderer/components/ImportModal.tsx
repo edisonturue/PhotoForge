@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImportProgress } from '../../shared/types';
 import { Theme, SPACING, RADIUS, SHADOW, TYPO, TRANSITION, DURATION, EASING } from '../styles/theme';
 import { useI18n, Lang } from '../i18n';
@@ -29,17 +29,21 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
   const pct = progress ? Math.round((progress.current / progress.total) * 100) : 0;
   useEffect(() => { setImportMode(defaultImportMode); }, [defaultImportMode]);
 
-  // Handle completion animation sequence: show success overlay → exit animation → close
+  const handleDone = useCallback(() => {
+    setExiting(true);
+    setTimeout(onClose, DURATION.normal);
+  }, [onClose]);
+
+  // Show success overlay when import completes, auto-close after 2s if user hasn't clicked Done
   useEffect(() => {
     if (progress?.stage === 'complete' && !exiting && !showSuccess) {
       setShowSuccess(true);
       const closeTimer = setTimeout(() => {
-        setExiting(true);
-        setTimeout(onClose, DURATION.normal); // match exit animation duration
-      }, 1400);
+        handleDone();
+      }, 2000);
       return () => clearTimeout(closeTimer);
     }
-  }, [progress?.stage, exiting, showSuccess, onClose]);
+  }, [progress?.stage, exiting, showSuccess, handleDone]);
 
   // Prevent overlay click when showing success or importing
   const handleOverlayClick = () => {
@@ -106,12 +110,12 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               animation: `fadeInUp ${DURATION.normal}ms ${EASING.out} both`,
               zIndex: 10,
+              gap: SPACING.lg,
             }}>
               <div style={{
                 width: 72, height: 72, borderRadius: '50%',
                 background: t.successLight,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: SPACING.lg,
                 animation: `successPulse ${DURATION.slow}ms ${EASING.out}`,
               }}>
                 <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke={t.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
@@ -119,12 +123,31 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
                     style={{ animation: `checkmark ${DURATION.normal}ms ${EASING.out} forwards` }} />
                 </svg>
               </div>
-              <div style={{ fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.sm }}>
-                {tr('import.stage.complete')}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.xs }}>
+                  {tr('import.stage.complete')}
+                </div>
+                <div style={{ fontSize: TYPO.body.size, color: t.textSecondary }}>
+                  {progress ? `${progress.current} ${tr('grid.photoCount')}` : ''}
+                </div>
               </div>
-              <div style={{ fontSize: TYPO.body.size, color: t.textSecondary }}>
-                {progress ? `${progress.current} / ${progress.total} ${tr('grid.photoCount')}` : ''}
-              </div>
+              <button
+                style={{
+                  padding: `${SPACING.sm}px ${SPACING.xxl}px`,
+                  border: 'none',
+                  borderRadius: RADIUS.md,
+                  background: t.accent,
+                  color: t.textInverse,
+                  cursor: 'pointer',
+                  fontSize: TYPO.body.size,
+                  fontWeight: 600,
+                }}
+                onClick={handleDone}
+                onMouseEnter={e => { e.currentTarget.style.background = t.accentHover; }}
+                onMouseLeave={e => { e.currentTarget.style.background = t.accent; }}
+              >
+                {tr('import.done')}
+              </button>
             </div>
           )}
         </div>
@@ -135,7 +158,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
             onMouseEnter={e => { if (!progress) { e.currentTarget.style.background = t.bgHover; } }}
             onMouseLeave={e => { if (!progress) { e.currentTarget.style.background = t.bgSecondary; } }} disabled={!!progress || showSuccess}>{tr('import.cancel')}</button>
           <button style={{ ...s(t).importBtn, opacity: paths.length === 0 || !!progress || showSuccess ? 0.5 : 1 }} onClick={() => onImport(paths, importMode)} disabled={paths.length === 0 || !!progress || showSuccess}>
-            {progress ? tr('import.importing') : `${tr('import.start')} (${importMode === 'copy' ? tr('import.copyLabel') : tr('import.refLabel')})`}
+            {progress ? tr('import.importing') : tr('import.start')}
           </button>
         </div>
       </div>

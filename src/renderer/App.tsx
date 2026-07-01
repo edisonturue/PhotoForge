@@ -365,6 +365,7 @@ export const App: React.FC = () => {
       const result = await window.photoForge.importFiles({ sourcePaths, copyToLibrary: importMode === 'copy', libraryPath: await window.photoForge.getLibraryPath(), generateThumbnails: true, thumbnailSize: settings.thumbnailSize, extractMetadata: true, detectDuplicates: true, fileExtensions: [] });
       if (result.imported > 0) {
         importCompletedRef.current = true;
+        setImportProgress(null);
         // Let ImportModal show success overlay + exit animation, then onClose will refresh
       } else {
         // Nothing was imported — close immediately
@@ -1019,7 +1020,7 @@ export const App: React.FC = () => {
 
       {/* Import modal */}
       {showImport && (
-        <ImportModal onImport={handleImport} onClose={() => { cbRef.current.setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
+        <ImportModal onImport={handleImport} onClose={() => { setImportProgress(null); cbRef.current.setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
       )}
 
       {/* Toasts */}
