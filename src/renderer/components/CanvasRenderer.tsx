@@ -263,7 +263,7 @@ function buildSvgFilter(a: PresetAdjustment): string | null {
 </svg>`;
 }
 
-export const CanvasRenderer: React.FC<CanvasRendererProps> = ({ src, adjustments, style, className, alt, draggable }) => {
+const CanvasRendererInner: React.FC<CanvasRendererProps> = ({ src, adjustments, style, className, alt, draggable }) => {
   const { filter: filterStr, svgFilterId } = useMemo(() => buildFilterStyle(adjustments), [adjustments]);
   const svgMarkup = useMemo(() => buildSvgFilter(adjustments), [adjustments]);
   const needsVignette = adjustments.vignette > 0;
@@ -316,6 +316,10 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({ src, adjustments
     </>
   );
 };
+
+export const CanvasRenderer = React.memo(CanvasRendererInner);
+// Export inner type for useEffectiveAdjustments hook
+
 
 export function useEffectiveAdjustments(presetAdj: PresetAdjustment | undefined, customAdj: Partial<PresetAdjustment> | null): PresetAdjustment {
   return useMemo(() => {

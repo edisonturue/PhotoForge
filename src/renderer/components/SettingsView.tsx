@@ -4,16 +4,13 @@ import { Theme, SPACING, RADIUS, TYPO, SHADOW, TRANSITION } from '../styles/them
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 import { Select } from './Select';
-
 interface SettingsViewProps {
  onBack: () => void;
  onSettingsChange: (updates: Partial<AppSettings>) => void;
  settings: AppSettings;
  theme: Theme;
 }
-
 type SettingsSection = 'general' | 'import' | 'export' | 'display' | 'shortcuts' | 'advanced' | 'logs' | 'about';
-
 const EXPORT_FORMATS: { value: ExportFormat; label: string }[] = [
  { value: 'jpg', label: 'JPEG' },
  { value: 'png', label: 'PNG' },
@@ -22,7 +19,6 @@ const EXPORT_FORMATS: { value: ExportFormat; label: string }[] = [
  { value: 'bmp', label: 'BMP' },
  { value: 'avif', label: 'AVIF' },
 ];
-
 const fieldLabelStyle = (t: Theme): React.CSSProperties => ({
  display: 'block',
  fontSize: TYPO.small.size,
@@ -30,7 +26,6 @@ const fieldLabelStyle = (t: Theme): React.CSSProperties => ({
  color: t.textPrimary,
  marginBottom: SPACING.sm,
 });
-
 const keycapStyle = (t: Theme): React.CSSProperties => ({
  padding: `${SPACING.xs}px ${SPACING.md}px`,
  background: t.bgSecondary,
@@ -42,14 +37,13 @@ const keycapStyle = (t: Theme): React.CSSProperties => ({
  textAlign: 'center',
  boxShadow: 'inset 0 1px 0 rgba(0,0,0,0.2)',
 });
-
 export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsChange, settings, theme: t }) => {
  const { t: tr, lang } = useI18n();
  const [saved, setSaved] = useState(false);
  const [clearing, setClearing] = useState(false);
  const [activeSection, setActiveSection] = useState<SettingsSection>('general');
- const saveTimerRef = useRef<number | null>(null);
 
+ const saveTimerRef = useRef<number | null>(null);
  const sections: { key: SettingsSection; labelKey: string; icon: React.ReactNode }[] = [
   { key: 'general', labelKey: 'settings.general', icon: <AppIcon name="settings" size={15} /> },
   { key: 'import', labelKey: 'settings.import', icon: <AppIcon name="import" size={15} /> },
@@ -61,7 +55,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
   { key: 'about', labelKey: 'settings.about', icon: <AppIcon name="info" size={15} /> },
  ];
 
-
  const update = (partial: Partial<AppSettings>) => {
   onSettingsChange(partial);
   setSaved(true);
@@ -70,12 +63,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
   }
   saveTimerRef.current = window.setTimeout(() => setSaved(false), 1600);
  };
-
  useEffect(() => () => {
   if (saveTimerRef.current) {
    window.clearTimeout(saveTimerRef.current);
   }
  }, []);
+ 
+
 
  const handleClearLibrary = async () => {
   if (!confirm(tr('settings.clearLibraryConfirm'))) return;
@@ -90,7 +84,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
   }
   setClearing(false);
  };
-
  const handleBrowseLibraryPath = async () => {
   const result = await window.photoForge.openFileDialog({
    title: tr('settings.browseLibraryPath'),
@@ -100,7 +93,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
    update({ libraryPath: result.filePaths[0] });
   }
  };
-
  const namingPreview = settings.namingTemplate
   .replace('{filename}', 'DSC_0001')
   .replace('{date}', '2025-01-15')
@@ -113,7 +105,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
   .replace('{rating}', '4')
   .replace('{width}', '8192')
   .replace('{height}', '5464');
-
   const heroKeyMap: Record<string, string> = {
     general: 'settings.heroGeneral', import: 'settings.heroImport',
     export: 'settings.heroExport', display: 'settings.heroDisplay',
@@ -121,7 +112,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
     logs: 'settings.heroLogs', about: 'settings.heroAbout',
   };
   const sectionHeroTitle: string = tr(heroKeyMap[activeSection] ?? 'settings.heroAbout');
-
  return (
   <div style={styles.container(t)}>
    <div style={styles.header(t)}>
@@ -144,15 +134,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
      </span>
     </div>
    </div>
-
    <div style={styles.body}>
     <aside style={styles.sidebar(t)}>
      <div style={styles.sidebarTop(t)}>
       <div style={styles.sidebarBadge(t)}>{tr("settings.sidebarBadge")}</div>
       <div style={styles.sidebarHeading(t)}>{tr("settings.sidebarHeading")}</div>
-
      </div>
-
 
      <div style={styles.sectionList}>
       {sections.map(section => {
@@ -167,21 +154,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
          <span style={styles.sideIcon(t, selected)}>{section.icon}</span>
          <span style={{ flex: 1, minWidth: 0 }}>
           <span style={styles.sideLabel(t, selected)}>{tr(section.labelKey)}</span>
-          
          </span>
         </button>
        );
       })}
      </div>
     </aside>
-
     <main style={styles.content(t)}>
      <section style={styles.hero(t)}>
-      
       <h2 style={styles.heroTitle(t)}>{sectionHeroTitle}</h2>
-      
      </section>
-
      {activeSection === 'general' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -217,7 +199,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'import' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -238,7 +219,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           <div style={styles.metricRow(t)}>
            <div style={styles.metricPill(t)}>
             <span style={styles.metricNumber(t)}>{settings.importMode === 'copy' ? 'Managed' : tr('settings.linked')}</span>
-            <span style={styles.metricLabel(t)}>{settings.importMode === 'copy' ? 'Originals duplicated into the library.' : tr('settings.linkedDesc')}</span>
+            <span style={styles.metricLabel(t)}>{settings.importMode === 'copy' ? tr('settings.managedDesc') : tr('settings.linkedDesc')}</span>
            </div>
           </div>
          </FieldCard>
@@ -246,7 +227,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'export' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -271,15 +251,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           </div>
          </FieldCard>
         </SettingsFieldGroup>
-
         <SettingsFieldGroup theme={t} columns={2}>
-         <FieldCard theme={t} label={tr('settings.defaultNamingTemplate')} hint={tr('settings.namingTemplateHint')}>
-          <input
-           style={styles.textInput(t)}
-           value={settings.namingTemplate}
-           onChange={e => update({ namingTemplate: e.target.value })}
-           placeholder="{{filename}}"
-          />
+         <FieldCard theme={t} label={tr('settings.defaultNamingTemplate')}>
+          <div style={styles.namingPanel(t)}>
+           {[
+            { value: '{filename}', label: tr('export.namingPresetFilename') },
+            { value: '{date}_{filename}', label: tr('export.namingPresetDateFilename') },
+            { value: '{camera}_{filename}', label: tr('export.namingPresetCameraFilename') },
+            { value: '{filename}_{preset}', label: tr('export.namingPresetFilenamePreset') },
+            { value: '{year}-{month}-{day}_{filename}', label: tr('export.namingPresetFullDateFilename') },
+           ].map(opt => {
+            const isActive = settings.namingTemplate === opt.value;
+            return (
+             <button
+              key={opt.value}
+              type='button'
+              style={styles.namingCard(t, isActive)}
+              onClick={() => update({ namingTemplate: opt.value })}
+              onMouseEnter={e => {
+               if (!isActive) {
+                e.currentTarget.style.borderColor = t.accent;
+                e.currentTarget.style.background = t.bgHover;
+               }
+              }}
+              onMouseLeave={e => {
+               if (!isActive) {
+                e.currentTarget.style.borderColor = t.borderLight;
+                e.currentTarget.style.background = t.bgPrimary;
+               }
+              }}
+             >
+              <span style={styles.namingCardTemplate(t, isActive)}>{opt.value}</span>
+              <span style={styles.namingCardLabel(t, isActive)}>{opt.label}</span>
+             </button>
+            );
+           })}
+          </div>
           <div style={styles.previewChip(t)}>
            <span style={styles.previewLabel(t)}>{tr('export.namingPreview')}</span>
            <span style={styles.previewValue(t)}>{namingPreview}.jpg</span>
@@ -297,7 +304,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'display' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -326,7 +332,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'shortcuts' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -357,7 +362,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'advanced' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -385,7 +389,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           ]} />
          </FieldCard>
         </SettingsFieldGroup>
-
         <SettingsFieldGroup theme={t} columns={2}>
          <FieldCard theme={t} label={tr('settings.checkMissingFiles')} hint={tr('settings.checkMissingFilesHint')}>
           <ToggleRow theme={t} label={tr('settings.checkMissingFiles')} >
@@ -396,7 +399,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           <div style={styles.dangerPanel(t)}>
            <div>
             <div style={styles.dangerTitle(t)}>{tr('settings.dangerZone')}</div>
-            <div style={styles.dangerCopy(t)}>Deletes all managed photos from the current library index.</div>
+            <div style={styles.dangerCopy(t)}>{tr('settings.clearLibraryDesc')}</div>
            </div>
            <button
             style={{ ...styles.dangerBtn(t), opacity: clearing ? 0.55 : 1 }}
@@ -411,7 +414,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'about' && (
       <div style={styles.panelStack}>
        <SettingsPanel
@@ -429,7 +431,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           {tr('settings.aboutFeatures')}<br />
           {tr('settings.aboutFeatures2')}<br /><br />
           {tr('settings.aboutLicense')}<br />
-          {tr('settings.aboutTech')}
          </div>
          <button style={styles.aboutBtn(t)} onClick={() => window.photoForge.openExternal('https://github.com/photoforge')}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
@@ -441,14 +442,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
        </SettingsPanel>
       </div>
      )}
-
      {activeSection === 'logs' && <LogViewer theme={t} />}
     </main>
    </div>
   </div>
  );
 };
-
 const SettingsPanel: React.FC<{
  theme: Theme;
  title: string;
@@ -461,7 +460,6 @@ const SettingsPanel: React.FC<{
   <div style={styles.panelBody}>{children}</div>
  </section>
 );
-
 const SettingsFieldGroup: React.FC<{
  theme: Theme;
  columns: 1 | 2 | 3;
@@ -477,7 +475,6 @@ const SettingsFieldGroup: React.FC<{
   {children}
  </div>
 );
-
 const FieldCard: React.FC<{
  theme: Theme;
  label: string;
@@ -490,7 +487,6 @@ const FieldCard: React.FC<{
   {hint ? <div style={styles.fieldHint(t)}>{hint}</div> : null}
  </div>
 );
-
 const ToggleRow: React.FC<{
  theme: Theme;
  label: string;
@@ -505,7 +501,6 @@ const ToggleRow: React.FC<{
   <div style={styles.toggleControl(t)}>{children}</div>
  </div>
 );
-
 const styles = {
  container: (t: Theme): React.CSSProperties => ({
   flex: 1,
@@ -774,6 +769,42 @@ const styles = {
   fontSize: TYPO.body.size,
   boxShadow: 'none',
   outline: 'none',
+  }),
+ namingPanel: (t: Theme): React.CSSProperties => ({
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: SPACING.sm,
+ }),
+ namingCard: (t: Theme, active: boolean): React.CSSProperties => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: SPACING.xs,
+  padding: SPACING.lg + "px " + SPACING.sm + "px",
+  borderRadius: RADIUS.md,
+  border: "1.5px solid " + (active ? t.accent : t.borderLight),
+  background: active ? t.accentBg : t.bgPrimary,
+  cursor: 'pointer',
+  textAlign: 'center',
+  transition: TRANSITION.all,
+  outline: 'none',
+  minHeight: 48,
+ }),
+ namingCardTemplate: (t: Theme, active: boolean): React.CSSProperties => ({
+  fontSize: TYPO.small.size,
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+  fontWeight: active ? 600 : 400,
+  color: active ? t.accent : t.textPrimary,
+  lineHeight: 1.3,
+  textAlign: 'center',
+ }),
+ namingCardLabel: (t: Theme, active: boolean): React.CSSProperties => ({
+  fontSize: TYPO.tiny.size,
+  fontWeight: 400,
+  color: active ? t.accent : t.textTertiary,
+  lineHeight: 1.3,
+  textAlign: 'center',
  }),
  previewChip: (t: Theme): React.CSSProperties => ({
   display: 'flex',
@@ -1027,7 +1058,6 @@ const styles = {
   color: t.textTertiary,
  }),
 };
-
 interface LogEntry {
  ts: string;
  level: string;
@@ -1035,7 +1065,6 @@ interface LogEntry {
  msg: string;
  data?: any;
 }
-
 const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
  const { t: tr, lang } = useI18n();
  const [dates, setDates] = useState<string[]>([]);
@@ -1046,14 +1075,12 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
  const [searchQuery, setSearchQuery] = useState('');
  const [autoScroll, setAutoScroll] = useState(true);
  const logEndRef = useRef<HTMLDivElement>(null);
-
  useEffect(() => {
   window.photoForge.logDates().then(logDates => {
    setDates(logDates);
    if (logDates.length > 0) setSelectedDate(logDates[0]);
   });
  }, []);
-
  useEffect(() => {
   if (!selectedDate) return;
   const filter: any = {};
@@ -1062,13 +1089,11 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
   if (searchQuery) filter.search = searchQuery;
   window.photoForge.logRead(selectedDate, Object.keys(filter).length > 0 ? filter : undefined, 1000).then(setEntries);
  }, [selectedDate, levelFilter, moduleFilter, searchQuery]);
-
  useEffect(() => {
   if (autoScroll && logEndRef.current) {
    logEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }
  }, [entries, autoScroll]);
-
  const handleRefresh = () => {
   if (!selectedDate) return;
   const filter: any = {};
@@ -1077,19 +1102,16 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
   if (searchQuery) filter.search = searchQuery;
   window.photoForge.logRead(selectedDate, Object.keys(filter).length > 0 ? filter : undefined, 1000).then(setEntries);
  };
-
  const handleClear = async () => {
   if (!confirm(tr('settings.clearLogsConfirm'))) return;
   await window.photoForge.logClear();
   setEntries([]);
   setDates([]);
  };
-
  const handleOpenDir = async () => {
   const dir = await window.photoForge.logDir();
   if (dir) window.photoForge.openFolder(dir);
  };
-
  const levelColor = (level: string) => {
   switch (level) {
    case 'error':
@@ -1104,7 +1126,6 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
     return t.textSecondary;
   }
  };
-
  const levelBg = (level: string) => {
   switch (level) {
    case 'error':
@@ -1115,7 +1136,6 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
     return 'transparent';
   }
  };
-
  return (
   <div style={styles.panelStack}>
    <SettingsPanel
@@ -1153,7 +1173,6 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
       <AppIcon name="trash" size={14} color={t.danger} />
      </button>
     </div>
-
     <div style={styles.logPanel(t)}>
      {entries.length === 0 && (
       <div style={styles.logEmpty(t)}>{tr('settings.noLogs')}</div>
@@ -1179,7 +1198,6 @@ const LogViewer: React.FC<{ theme: Theme }> = ({ theme: t }) => {
      ))}
      <div ref={logEndRef} />
     </div>
-
     <div style={styles.logCount(t)}>
      {tr('settings.logCount').replace('{count}', String(entries.length))} · {tr('settings.logSaveLocation')}
     </div>

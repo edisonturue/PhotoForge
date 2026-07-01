@@ -16,22 +16,70 @@ interface SelectProps {
 
 export const Select: React.FC<SelectProps> = ({ value, onChange, options, theme: t, style }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const btnRef = useRef<HTMLButtonElement>(null);
   const selected = options.find(o => o.value === value);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
+      if (btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        const menu = document.getElementById('select-menu-' + value.replace(/[^a-z0-9]/g, ''));
+        if (menu && !menu.contains(e.target as Node)) {
+          setOpen(false);
+        }
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  }, [value]);
+
+  const updateMenuPosition = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuStyle(prev => ({
+        ...prev,
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      }));
+    }
+  };
+
+  const toggleOpen = () => {
+    if (open) {
+      setOpen(false);
+    } else {
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        setMenuStyle({
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          right: 'auto',
+          width: rect.width,
+          zIndex: 9999,
+        });
+      }
+      setOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      updateMenuPosition();
+      window.addEventListener('scroll', updateMenuPosition, true);
+      window.addEventListener('resize', updateMenuPosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updateMenuPosition, true);
+      window.removeEventListener('resize', updateMenuPosition);
+    };
+  }, [open]);
 
   return (
-    <div ref={ref} style={{ position: 'relative', ...style }}>
+    <div style={{ position: 'relative', ...style }}>
       <button
+        ref={btnRef}
         type="button"
         style={{
           width: '100%',
@@ -51,7 +99,7 @@ export const Select: React.FC<SelectProps> = ({ value, onChange, options, theme:
           transition: TRANSITION.all,
           textAlign: 'left',
         }}
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         onMouseEnter={e => { if (!open) e.currentTarget.style.borderColor = t.borderFocus; }}
         onMouseLeave={e => { if (!open) e.currentTarget.style.borderColor = t.border; }}
       >
@@ -68,21 +116,20 @@ export const Select: React.FC<SelectProps> = ({ value, onChange, options, theme:
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 4px)',
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          background: t.dropdownBg,
-          border: `1px solid ${t.borderLight}`,
-          borderRadius: RADIUS.md,
-          padding: SPACING.xs,
-          boxShadow: SHADOW.md,
-          animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`,
-          maxHeight: 240,
-          overflowY: 'auto',
-        }}>
+        <div
+          id={'select-menu-' + value.replace(/[^a-z0-9]/g, '')}
+          style={{
+            ...menuStyle,
+            background: t.dropdownBg,
+            border: `1px solid ${t.borderLight}`,
+            borderRadius: RADIUS.md,
+            padding: SPACING.xs,
+            boxShadow: SHADOW.lg,
+            animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`,
+            maxHeight: 240,
+            overflowY: 'auto',
+          }}
+        >
           {options.map(option => {
             const isSelected = option.value === value;
             return (

@@ -204,7 +204,7 @@ export const App: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Toggle: clicking active nav item returns to browse (except edit)
   const navTo = useCallback((m: Module) => {
-    setActiveModule(prev => {
+    cbRef.current.setActiveModule(prev => {
       if (prev === m && m !== 'edit') return 'browse';
       return m;
     });
@@ -332,9 +332,9 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (activeModule === 'edit') {
       if (selectedIds.size > 0) {
-        setActivePhotoId(Array.from(selectedIds)[0]);
+        cbRef.current.setActivePhotoId(Array.from(selectedIds)[0]);
       } else if (!activePhotoId && filteredPhotos.length > 0) {
-        setActivePhotoId(filteredPhotos[0].id);
+        cbRef.current.setActivePhotoId(filteredPhotos[0].id);
       }
     }
   }, [activeModule, activePhotoId, selectedIds, filteredPhotos]);
@@ -342,12 +342,12 @@ export const App: React.FC = () => {
   const handleModuleChange = useCallback((m: Module) => {
     if (m === 'edit') {
       if (selectedIds.size > 0) {
-        setActivePhotoId(Array.from(selectedIds)[0]);
+        cbRef.current.setActivePhotoId(Array.from(selectedIds)[0]);
       } else if (!activePhotoId && filteredPhotos.length > 0) {
-        setActivePhotoId(filteredPhotos[0].id);
+        cbRef.current.setActivePhotoId(filteredPhotos[0].id);
       }
     }
-    navTo(m);
+    cbRef.current.navTo(m);
   }, [navTo, activePhotoId, selectedIds, filteredPhotos]);
 
   // ========== Handlers ==========
@@ -368,10 +368,10 @@ export const App: React.FC = () => {
         // Let ImportModal show success overlay + exit animation, then onClose will refresh
       } else {
         // Nothing was imported — close immediately
-        setShowImport(false);
+        cbRef.current.setShowImport(false);
       }
     } catch (err) {
-      setShowImport(false);
+      cbRef.current.setShowImport(false);
       addToast('error', t('toast.importFailed'), 5000);
     }
   }, [settings, addToast, t]);
@@ -401,12 +401,12 @@ export const App: React.FC = () => {
     lastClickedIndexRef.current = filteredPhotos.findIndex(p => p.id === id);
   }, [filteredPhotos]);
   const enterEditMode = useCallback((id: string) => {
-    setActivePhotoId(id);
-    setActiveModule('edit');
+    cbRef.current.setActivePhotoId(id);
+    cbRef.current.setActiveModule('edit');
   }, []);
   const exitEditMode = useCallback(() => {
-    setActivePhotoId(null);
-    setActiveModule('browse');
+    cbRef.current.setActivePhotoId(null);
+    cbRef.current.setActiveModule('browse');
   }, []);
   // History-aware photo update — records every edit to the undo stack
   const handleUpdatePhotoWithHistory = useCallback(async (id: string, updates: Partial<PhotoFile>) => {
@@ -627,48 +627,97 @@ export const App: React.FC = () => {
   }, [activeModule, activePhotoId, selectedIds, photos, updatePhoto, history, addToast, t, lang]);
 
   // ========== Keyboard Shortcuts ==========
+  // Use refs for callback dependencies so the handler never needs re-registration.
+  // The handler itself reads the latest values from refs on each keypress.
+  const activeModuleRef = useRef(activeModule);
+  activeModuleRef.current = activeModule;
+  const activePhotoIdRef = useRef(activePhotoId);
+  activePhotoIdRef.current = activePhotoId;
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const showImportRef = useRef(showImport);
+  showImportRef.current = showImport;
+
+  // Stable refs for filtered photos and their index map (avoids stale closures)
+  const filteredPhotosRef = useRef(filteredPhotos);
+  filteredPhotosRef.current = filteredPhotos;
+  const photoIndexMapRef = useRef(new Map<string, number>());
+  useEffect(() => {
+    const map = new Map<string, number>();
+    for (let i = 0; i < filteredPhotos.length; i++) {
+      map.set(filteredPhotos[i].id, i);
+    }
+    photoIndexMapRef.current = map;
+  }, [filteredPhotos]);
+
+  // All changeable callbacks in one ref so the keydown handler never goes stale
+  const cbRef = useRef({
+    handleUndo, handleRedo, handleExport, handleToggleFavoriteShortcut,
+    navTo, handleModuleChange, handleDeleteSelected, enterEditMode, exitEditMode,
+    setShowImport, setSidebarCollapsed, setActiveModule, setActivePhotoId, setSelectedIds
+  });
+  cbRef.current = {
+    handleUndo, handleRedo, handleExport, handleToggleFavoriteShortcut,
+    navTo, handleModuleChange, handleDeleteSelected, enterEditMode, exitEditMode,
+    setShowImport, setSidebarCollapsed, setActiveModule, setActivePhotoId, setSelectedIds
+  };
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       // Skip shortcuts when focused on text input
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
+      const m = activeModuleRef.current;
+      const pid = activePhotoIdRef.current;
+      const sids = selectedIdsRef.current;
+      const showIm = showImportRef.current;
+
       const cmd = e.metaKey || e.ctrlKey;
-      if (cmd && e.key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
-      if (cmd && e.key === 'z' && e.shiftKey) { e.preventDefault(); handleRedo(); }
-      if (cmd && e.key === 'y') { e.preventDefault(); handleRedo(); }
-      if (cmd && e.key === 'i') { e.preventDefault(); setShowImport(true); }
-      if (cmd && e.key === 'e') { e.preventDefault(); handleExport(); }
-      if (cmd && e.key === '\\') { e.preventDefault(); setSidebarCollapsed(p => !p); }
-      if (cmd && e.key === 'p') { e.preventDefault(); navTo('presets'); }
-      if (cmd && e.key === 'l') { e.preventDefault(); handleToggleFavoriteShortcut(); }
+      if (cmd && e.key === 'z' && !e.shiftKey) { e.preventDefault(); cbRef.current.handleUndo(); return; }
+      if (cmd && e.key === 'z' && e.shiftKey) { e.preventDefault(); cbRef.current.handleRedo(); return; }
+      if (cmd && e.key === 'y') { e.preventDefault(); cbRef.current.handleRedo(); return; }
+      if (cmd && e.key === 'i') { e.preventDefault(); cbRef.current.setShowImport(true); return; }
+      if (cmd && e.key === 'e') { e.preventDefault(); cbRef.current.handleExport(); return; }
+      if (cmd && e.key === '\\') { e.preventDefault(); cbRef.current.setSidebarCollapsed(p => !p); return; }
+      if (cmd && e.key === 'p') { e.preventDefault(); cbRef.current.navTo('presets'); return; }
+      if (cmd && e.key === 'l') { e.preventDefault(); cbRef.current.handleToggleFavoriteShortcut(); return; }
       // Module shortcuts
-      if (cmd && e.key === '1') { e.preventDefault(); setActiveModule('browse'); }
-      if (cmd && e.key === '2') { e.preventDefault(); handleModuleChange('edit'); }
-      if (cmd && e.key === '3') { e.preventDefault(); navTo('compare'); }
-      if (cmd && e.key === '4') { e.preventDefault(); navTo('settings'); }
-      if (cmd && e.key === '5') { e.preventDefault(); navTo('dategroup'); }
+      if (cmd && e.key === '1') { e.preventDefault(); cbRef.current.setActiveModule('browse'); return; }
+      if (cmd && e.key === '2') { e.preventDefault(); cbRef.current.handleModuleChange('edit'); return; }
+      if (cmd && e.key === '3') { e.preventDefault(); cbRef.current.navTo('compare'); return; }
+      if (cmd && e.key === '4') { e.preventDefault(); cbRef.current.navTo('settings'); return; }
+      if (cmd && e.key === '5') { e.preventDefault(); cbRef.current.navTo('dategroup'); return; }
+
       // Browse mode actions
-      if (activeModule === 'browse') {
-        if (e.key === 'Backspace' && selectedIds.size > 0) { e.preventDefault(); handleDeleteSelected(); }
-        if (cmd && e.key === 'a') { e.preventDefault(); setSelectedIds(new Set(filteredPhotos.map(p => p.id))); }
-        if (e.key === 'Enter' && selectedIds.size === 1) { e.preventDefault(); enterEditMode(Array.from(selectedIds)[0]); }
+      if (m === 'browse') {
+        if (e.key === 'Backspace' && sids.size > 0) { e.preventDefault(); cbRef.current.handleDeleteSelected(); return; }
+        if (cmd && e.key === 'a') { e.preventDefault(); cbRef.current.setSelectedIds(new Set(filteredPhotosRef.current.map(p => p.id))); return; }
+        if (e.key === 'Enter' && sids.size === 1) { e.preventDefault(); cbRef.current.enterEditMode(Array.from(sids)[0]); return; }
       }
-      // Edit mode actions
-      if (activeModule === 'edit' && activePhotoId) {
-        const idx = filteredPhotos.findIndex(p => p.id === activePhotoId);
-        if (e.key === 'ArrowLeft' && idx > 0) setActivePhotoId(filteredPhotos[idx - 1].id);
-        if (e.key === 'ArrowRight' && idx < filteredPhotos.length - 1) setActivePhotoId(filteredPhotos[idx + 1].id);
+
+      // Edit mode — photo navigation: use O(1) Map lookup
+      if (m === 'edit' && pid) {
+        const idx = photoIndexMapRef.current.get(pid) ?? -1;
+        if (e.key === 'ArrowLeft') {
+          if (idx > 0) { e.preventDefault(); cbRef.current.setActivePhotoId(filteredPhotosRef.current[idx - 1].id); }
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          if (idx < filteredPhotosRef.current.length - 1) { e.preventDefault(); cbRef.current.setActivePhotoId(filteredPhotosRef.current[idx + 1].id); }
+          return;
+        }
       }
+
       if (e.key === 'Escape') {
-        if (activeModule === 'edit') exitEditMode();
-        if (showImport) setShowImport(false);
-        if (activeModule !== 'browse' && activeModule !== 'edit') setActiveModule('browse');
+        if (m === 'edit') cbRef.current.exitEditMode();
+        if (showIm) cbRef.current.setShowImport(false);
+        if (m !== 'browse' && m !== 'edit') cbRef.current.setActiveModule('browse');
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleModuleChange, handleUndo, handleRedo, activeModule, selectedIds, filteredPhotos, activePhotoId, showImport, handleDeleteSelected, enterEditMode, exitEditMode, handleExport, handleToggleFavoriteShortcut, navTo]);
+  }, []); // Empty: all state reads go through refs, callbacks use reducer pattern
 
   // ========== Module Layout Config ==========
   const showSidebar = activeModule === 'browse' && !sidebarCollapsed;
@@ -804,14 +853,14 @@ export const App: React.FC = () => {
         theme={theme}
         // Browse actions
         onImport={() => setShowImport(true)}
-        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggleSidebar={() => cbRef.current.setSidebarCollapsed(!sidebarCollapsed)}
                 sort={sort}
         onSortChange={setSort}
         selectedCount={selectedIds.size}
         onBatchApplyPreset={handleBatchApplyPreset}
         presets={presets}
         canCompare={selectedIds.size >= 2}
-        onCompare={() => navTo('compare')}
+        onCompare={() => cbRef.current.navTo('compare')}
         onDeleteSelected={handleDeleteSelected}
         // Edit actions
         activePhotoName={activePhoto?.fileName}
@@ -824,8 +873,8 @@ export const App: React.FC = () => {
         manageMode={manageMode}
         onManageModeChange={setManageMode}
         onClearSelection={() => { setSelectedIds(new Set()); }}
-        onOpenSettings={() => navTo('settings')}
-        onOpenDateGroup={() => navTo('dategroup')}
+        onOpenSettings={() => cbRef.current.navTo('settings')}
+        onOpenDateGroup={() => cbRef.current.navTo('dategroup')}
       >
         {activeModule === 'browse' && (
           <SearchBar photos={photos} onSearch={setSearchQuery} onSelectPhoto={enterEditMode} theme={theme} />
@@ -879,7 +928,7 @@ export const App: React.FC = () => {
               onOpenDetail={enterEditMode}
               onToggleFavorite={handleToggleFavorite}
               onDelete={(ids) => { setSelectedIds(new Set(ids)); handleDeleteSelected(); }}
-              onCompare={selectedIds.size >= 2 ? () => navTo('compare') : undefined}
+              onCompare={selectedIds.size >= 2 ? () => cbRef.current.navTo('compare') : undefined}
               onSetRating={handleSetRating}
               theme={theme}
               manageMode={manageMode}
@@ -894,6 +943,8 @@ export const App: React.FC = () => {
           {activeModule === 'edit' && activePhoto && (
             <PhotoDetail
               photo={activePhoto}
+              allPhotos={filteredPhotos}
+              onNavigate={(id) => cbRef.current.setActivePhotoId(id)}
               presets={presets}
               onApplyPreset={handleApplyPreset}
               onRemovePreset={handleRemovePreset}
@@ -924,15 +975,15 @@ export const App: React.FC = () => {
 
           {/* STATISTICS MODULE */}
           {activeModule === 'statistics' && (
-            <StatisticsView photos={photos} onBack={() => setActiveModule('browse')} theme={theme} />
+            <StatisticsView photos={photos} onBack={() => cbRef.current.setActiveModule('browse')} theme={theme} />
           )}
 
           {/* Overlays — settings/compare/date-group replace browse grid */}
           {activeModule === 'settings' && (
-            <SettingsView onBack={() => setActiveModule('browse')} onSettingsChange={handleSettingsChange} settings={settings} theme={theme} />
+            <SettingsView onBack={() => cbRef.current.setActiveModule('browse')} onSettingsChange={handleSettingsChange} settings={settings} theme={theme} />
           )}
           {activeModule === 'compare' && (
-            <CompareView photos={photos.filter(p => selectedIds.has(p.id))} onBack={() => setActiveModule('browse')} theme={theme} />
+            <CompareView photos={photos.filter(p => selectedIds.has(p.id))} onBack={() => cbRef.current.setActiveModule('browse')} theme={theme} />
           )}
           {activeModule === 'dategroup' && (
             <DateGroupView photos={filteredPhotos} onSelect={handleSelect} onSelectPhoto={enterEditMode} onToggleFavorite={handleToggleFavorite} selectedIds={selectedIds} theme={theme} />
@@ -947,7 +998,7 @@ export const App: React.FC = () => {
             selectedCount={selectedIds.size}
             onApplyPreset={handleApplyPreset}
             onBatchApply={handleBatchApplyPreset}
-            onClose={() => setActiveModule('browse')}
+            onClose={() => cbRef.current.setActiveModule('browse')}
             onCreatePreset={createPreset}
             onDeletePreset={deletePreset}
             onRefreshPresets={loadPresets}
@@ -967,7 +1018,7 @@ export const App: React.FC = () => {
 
       {/* Import modal */}
       {showImport && (
-        <ImportModal onImport={handleImport} onClose={() => { setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
+        <ImportModal onImport={handleImport} onClose={() => { cbRef.current.setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
       )}
 
       {/* Toasts */}

@@ -64,7 +64,7 @@ function formatFileSize(bytes: number): string {
 
 // ProgressiveImage component — renders thumbnail, upgrades to preview
 const ProgressiveImage: React.FC<{ photo: PhotoFile; style: React.CSSProperties }> = ({ photo, style }) => {
-  const fallbackSrc = photo.thumbnailPath || photo.displayUrl || `photoforge://raw/${encodeURIComponent(photo.filePath)}`;
+  const fallbackSrc = photo.displayUrl || (photo.thumbnailPath ? `file://${photo.thumbnailPath}` : null) || `photoforge://raw/${encodeURIComponent(photo.filePath)}`;
   const { src, loaded } = useProgressiveImage(photo.id, fallbackSrc);
   
   return (
@@ -72,9 +72,8 @@ const ProgressiveImage: React.FC<{ photo: PhotoFile; style: React.CSSProperties 
       src={src}
       style={{
         ...style,
-        filter: loaded ? 'none' : 'blur(2px)',
-        opacity: loaded ? 1 : 0.7,
-        transition: `filter ${DURATION.normal}ms ${EASING.out}, opacity ${DURATION.normal}ms ${EASING.out}`,
+        opacity: loaded ? 1 : 0,
+        transition: `opacity ${DURATION.normal}ms ${EASING.out}`,
       }}
       loading="lazy"
       alt={photo.fileName}
@@ -201,7 +200,6 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
                   style={{
                     ...s(t).thumb,
                     transform: [photo.flipH ? 'scaleX(-1)' : '', photo.flipV ? 'scaleY(-1)' : '', photo.rotation ? `rotate(${photo.rotation}deg)` : ''].filter(Boolean).join(' ') || undefined,
-                    transition: `transform ${DURATION.normal}ms ${EASING.out}`,
                   }}
 
                 />

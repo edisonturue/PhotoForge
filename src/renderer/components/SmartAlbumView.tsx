@@ -146,7 +146,7 @@ export const SmartAlbumView: React.FC<SmartAlbumViewProps> = ({ photos, collecti
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <div style={{ aspectRatio: '4/3', overflow: 'hidden', background: t.bgSecondary }}>
-                  <img src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
+                  <img src={photo.displayUrl || (photo.thumbnailPath ? `file://${photo.thumbnailPath}` : null) || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" alt="" />
                 </div>
                 <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px` }}>

@@ -40,8 +40,8 @@ export const CompareView: React.FC<CompareViewProps> = ({ photos, onBack, theme:
   }
 
   const cols = Math.min(photos.length, 4);
-  const imgA = photos[0].displayUrl || photos[0].thumbnailPath || `photoforge://raw/${encodeURIComponent(photos[0].filePath)}`;
-  const imgB = photos[1].displayUrl || photos[1].thumbnailPath || `photoforge://raw/${encodeURIComponent(photos[1].filePath)}`;
+  const imgA = photos[0].displayUrl || (photos[0].thumbnailPath ? `file://${photos[0].thumbnailPath}` : null) || `photoforge://raw/${encodeURIComponent(photos[0].filePath)}`;
+  const imgB = photos[1].displayUrl || (photos[1].thumbnailPath ? `file://${photos[1].thumbnailPath}` : null) || `photoforge://raw/${encodeURIComponent(photos[1].filePath)}`;
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging.current || !containerRef.current) return;
@@ -100,7 +100,7 @@ export const CompareView: React.FC<CompareViewProps> = ({ photos, onBack, theme:
             {photos.slice(0, 4).map(photo => (
               <div key={photo.id} style={{ display: 'flex', flexDirection: 'column', background: t.bgPhotoSurface, borderRadius: 14, overflow: 'hidden', boxShadow: SHADOW.sm }}>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: t.bgPhotoStage }}>
-                  <img src={photo.displayUrl || photo.thumbnailPath || `photoforge://raw/${encodeURIComponent(photo.filePath)}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={photo.fileName} />
+                  <img src={photo.displayUrl || (photo.thumbnailPath ? `file://${photo.thumbnailPath}` : null) || `photoforge://raw/${encodeURIComponent(photo.filePath)}`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={photo.fileName} />
                 </div>
                 <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.bgCard }}>
                   <div style={{ fontSize: TYPO.small.size, color: t.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{photo.fileName}</div>

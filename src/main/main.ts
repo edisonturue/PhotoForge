@@ -140,7 +140,7 @@ app.whenReady().then(async () => {
   }
 
   // Regenerate thumbnails for photos missing them (async, non-blocking)
-  const photosNeedingThumbs = store.getAllPhotos().filter(p => !p.thumbnailPath);
+  const photosNeedingThumbs = store.getAllPhotos().filter(p => !p.thumbnailPath || !fs.existsSync(p.thumbnailPath));
   if (photosNeedingThumbs.length > 0) {
     log.info('Regenerating thumbnails', { count: photosNeedingThumbs.length });
     // Run in background — don't block startup
@@ -324,6 +324,71 @@ function registerIpcHandlers(): void {
       if (await store.deletePhoto(id)) deleted++;
     }
     return deleted;
+  });
+
+
+  // On-demand thumbnail generation for a single photo
+  // Called when user enters edit page — ensures the thumbnail exists on disk
+  ipcMain.handle(IPC.GENERATE_THUMBNAIL, async (_, id: string): Promise<string | null> => {
+    const log = logger.module('ipc');
+    const photo = store.getPhoto(id);
+    if (!photo) return null;
+    if (!fs.existsSync(photo.filePath)) return null;
+
+    const libraryPath = store.getLibraryPath();
+    const thumbnailsDir = path.join(libraryPath, 'thumbnails');
+    if (!fs.existsSync(thumbnailsDir)) fs.mkdirSync(thumbnailsDir, { recursive: true });
+
+    const baseName = path.basename(photo.fileName, path.extname(photo.fileName));
+    let thumbPath = path.join(thumbnailsDir, `${baseName}_thumb.jpg`);
+
+    // If thumbnail already exists on disk, return it immediately (cache hit)
+    if (fs.existsSync(thumbPath) && fs.statSync(thumbPath).size > 0) {
+      return `file://${thumbPath}`;
+    }
+
+    // Generate thumbnail (cache miss)
+    log.info('Generating thumbnail on-demand', { id, fileName: photo.fileName });
+    try {
+      if (isRawFile(photo.filePath)) {
+        const convertedDir = path.join(libraryPath, 'converted');
+        if (!fs.existsSync(convertedDir)) fs.mkdirSync(convertedDir, { recursive: true });
+        await getConvertedJpegPath(photo.filePath, convertedDir, 400);
+        const convertedName = `${baseName}_400.jpg`;
+        const convertedPath = path.join(convertedDir, convertedName);
+        if (fs.existsSync(convertedPath)) {
+          fs.copyFileSync(convertedPath, thumbPath);
+        } else {
+          const { execFileAsync } = require('child_process');
+          const { promisify } = require('util');
+          await promisify(execFileAsync)('sips', [
+            '--setProperty', 'format', 'jpeg',
+            '--resampleWidth', '400',
+            '--out', thumbPath, photo.filePath,
+          ], { timeout: 30000 });
+        }
+      } else {
+        const sharp = require('sharp');
+        await sharp(photo.filePath, { failOn: 'none' })
+          .rotate()
+          .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+          .jpeg({ quality: 85 })
+          .toFile(thumbPath);
+      }
+
+      if (fs.existsSync(thumbPath) && fs.statSync(thumbPath).size > 0) {
+        // Persist thumbnail path to store so future loads benefit from cache
+        store.updatePhoto(id, { thumbnailPath: thumbPath } as any);
+        store.save();
+        log.info('Thumbnail generated', { id, thumbPath });
+        return `file://${thumbPath}`;
+      }
+    } catch (err: any) {
+      log.warn('On-demand thumbnail generation failed', { id, error: err.message });
+    }
+
+    // Fallback: return the photoforge:// raw URL as last resort
+    return `photoforge://raw/800/${encodeURIComponent(photo.filePath)}`;
   });
 
   ipcMain.handle(IPC.UPDATE_PHOTO_META, async (_, id: string, updates: Partial<PhotoFile>): Promise<boolean> => {
@@ -527,6 +592,110 @@ function registerIpcHandlers(): void {
   ipcMain.handle(IPC.LOG_DIR, async () => {
     return logger.getLogDir();
   });
+  /**
+   * photo:getImageData — Load full-resolution image data for caching.
+   * Returns base64-encoded image data so the renderer can create blob URLs.
+   */
+  // ---------- Main-process LRU cache for GET_IMAGE_DATA ----------
+  // Stores recently read base64 image data to avoid re-reading files from disk
+  const IMAGE_DATA_CACHE_MAX = 8;
+  const imageDataCacheKeys: string[] = [];
+  const imageDataCache = new Map<string, { data: string; mime: string }>();
+
+  function getImageDataCached(key: string): { data: string; mime: string } | undefined {
+    const val = imageDataCache.get(key);
+    if (val) {
+      // Touch LRU order
+      const idx = imageDataCacheKeys.indexOf(key);
+      if (idx >= 0) {
+        imageDataCacheKeys.splice(idx, 1);
+        imageDataCacheKeys.push(key);
+      }
+    }
+    return val;
+  }
+
+  function setImageDataCache(key: string, value: { data: string; mime: string }): void {
+    if (imageDataCache.has(key)) {
+      const idx = imageDataCacheKeys.indexOf(key);
+      if (idx >= 0) {
+        imageDataCacheKeys.splice(idx, 1);
+        imageDataCacheKeys.push(key);
+      }
+      return;
+    }
+    while (imageDataCacheKeys.length >= IMAGE_DATA_CACHE_MAX) {
+      const oldest = imageDataCacheKeys.shift();
+      if (oldest) {
+        imageDataCache.delete(oldest);
+      }
+    }
+    imageDataCache.set(key, value);
+    imageDataCacheKeys.push(key);
+  }
+
+  ipcMain.handle(IPC.GET_IMAGE_DATA, async (_, photoId: string, maxWidth?: number): Promise<{ data: string; mime: string } | null> => {
+    const log = logger.module('ipc');
+    const photo = store.getPhoto(photoId);
+    if (!photo) {
+      log.warn('GET_IMAGE_DATA: photo not found', { photoId });
+      return null;
+    }
+
+    const libraryPath = store.getLibraryPath();
+
+    // Resolve source file path (same logic as getDisplayUrl but returns file path directly)
+    let sourcePath = photo.filePath;
+    const originalsDir = path.join(libraryPath, 'originals');
+    const looksLikeThumbnailPath = (p: string): boolean => {
+      const normalized = p.replace(/\\/g, '/');
+      return normalized.includes('/thumbnails/') || p.endsWith('_thumb.jpg');
+    };
+
+    if (looksLikeThumbnailPath(sourcePath) || !fs.existsSync(sourcePath)) {
+      const altPath = path.join(originalsDir, path.basename(sourcePath));
+      if (fs.existsSync(altPath)) sourcePath = altPath;
+    }
+
+    let filePath: string | null = null;
+    const w = maxWidth || 4000;
+
+    if (isRawFile(sourcePath)) {
+      const convertedDir = path.join(libraryPath, 'converted');
+      filePath = await getConvertedJpegPath(sourcePath, convertedDir, w);
+    } else if (fs.existsSync(sourcePath)) {
+      filePath = sourcePath;
+    }
+
+    // Fallback: try thumbnail
+    if (!filePath && photo.thumbnailPath && fs.existsSync(photo.thumbnailPath)) {
+      filePath = photo.thumbnailPath;
+    }
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      log.warn('GET_IMAGE_DATA: file not found', { photoId, sourcePath, filePath });
+      return null;
+    }
+
+    // Check main-process cache (avoids re-reading the file from disk)
+    const cacheKey = photoId + '|' + (filePath || '') + '|' + (maxWidth || '');
+    const cached = getImageDataCached(cacheKey);
+    if (cached) return cached;
+
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+      '.gif': 'image/gif', '.bmp': 'image/bmp', '.webp': 'image/webp',
+      '.tiff': 'image/tiff', '.tif': 'image/tiff',
+    };
+    const mime = mimeMap[ext] || 'image/jpeg';
+
+    const dataBuffer = fs.readFileSync(filePath);
+    const result = { data: dataBuffer.toString('base64'), mime };
+    setImageDataCache(cacheKey, result);
+    return result;
+  });
+
 }
 
 function getDisplayUrl(

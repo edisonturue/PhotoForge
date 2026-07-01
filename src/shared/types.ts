@@ -346,4 +346,6 @@ export const IPC = {
   WINDOW_MINIMIZE: 'window:minimize',
   WINDOW_TOGGLE_MAXIMIZE: 'window:toggleMaximize',
   WINDOW_CLOSE: 'window:close',
+  GENERATE_THUMBNAIL: 'photo:generateThumbnail',
+  GET_IMAGE_DATA: 'photo:getImageData',
 } as const;

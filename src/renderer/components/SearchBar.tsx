@@ -18,6 +18,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +43,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
       const next = [q, ...prev.filter(s => s !== q)].slice(0, 8);
       return next;
     });
+  }, []);
+
+  const updateDropdownPos = useCallback(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + SPACING.xs, left: rect.left, width: rect.width });
+    }
   }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,8 +107,36 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
     return () => document.removeEventListener('keydown', handleKey);
   }, [query]);
 
+  // Update dropdown position on open and on scroll/resize
+  useEffect(() => {
+    if (isOpen) {
+      updateDropdownPos();
+      window.addEventListener('scroll', updateDropdownPos, true);
+      window.addEventListener('resize', updateDropdownPos);
+    }
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPos, true);
+      window.removeEventListener('resize', updateDropdownPos);
+    };
+  }, [isOpen, updateDropdownPos]);
+
+  const dropdownBaseStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: dropdownPos.top,
+    left: dropdownPos.left,
+    width: dropdownPos.width,
+    maxHeight: 400,
+    overflowY: 'auto',
+    zIndex: Z_INDEX.dropdown,
+    animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`,
+    borderRadius: RADIUS.md,
+    boxShadow: SHADOW.lg,
+    background: t.dropdownBg,
+    padding: SPACING.xs,
+  };
+
   return (
-    <div ref={containerRef} style={{ position: 'relative', flex: 1, maxWidth: 400 }}>
+    <div ref={containerRef} style={{ flex: 1, maxWidth: 400 }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -152,12 +188,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
 
       {/* Recent searches (when input empty and focused) */}
       {isOpen && !query.trim() && recentSearches.length > 0 && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: SPACING.xs,
-          background: t.dropdownBg, borderRadius: RADIUS.md,
-          boxShadow: SHADOW.lg, maxHeight: 300, overflowY: 'auto', zIndex: Z_INDEX.dropdown,
-          animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`, padding: SPACING.xs,
-        }}>
+        <div style={dropdownBaseStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.xs}px ${SPACING.sm}px` }}>
             <span style={{ fontSize: TYPO.caption.size, color: t.textTertiary }}>{tr('search.recent')}</span>
             <button style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, background: 'none', border: 'none', cursor: 'pointer' }}
@@ -181,21 +212,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
 
       {/* Search results dropdown */}
       {isOpen && query.trim() && results.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          marginTop: SPACING.xs,
-          background: t.dropdownBg,
-          borderRadius: RADIUS.md,
-          boxShadow: SHADOW.lg,
-          maxHeight: 400,
-          overflowY: 'auto',
-          zIndex: Z_INDEX.dropdown,
-          animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`,
-          padding: SPACING.xs,
-        }}>
+        <div style={dropdownBaseStyle}>
           <div style={{ padding: `${SPACING.sm}px ${SPACING.md}px`, fontSize: TYPO.caption.size, color: t.textTertiary }}>
             {results.length} {tr('search.results')}
           </div>
@@ -224,7 +241,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
                 flexShrink: 0,
               }}>
                 <img
-                  src={photo.displayUrl || photo.thumbnailPath || `photoforge://raw/${encodeURIComponent(photo.filePath)}`}
+                  src={photo.displayUrl || (photo.thumbnailPath ? `file://${photo.thumbnailPath}` : null) || `photoforge://raw/${encodeURIComponent(photo.filePath)}`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   alt=""
                 />
@@ -254,18 +271,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({ photos, onSearch, onSelect
       {/* No results */}
       {isOpen && query.trim() && results.length === 0 && (
         <div style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          right: 0,
-          marginTop: SPACING.xs,
-          background: t.dropdownBg,
-          borderRadius: RADIUS.md,
-          boxShadow: SHADOW.lg,
+          ...dropdownBaseStyle,
+          maxHeight: 'none',
+          overflowY: 'visible',
           padding: `${SPACING.xl}px`,
           textAlign: 'center',
-          zIndex: Z_INDEX.dropdown,
-          animation: `fadeInUp ${DURATION.fast}ms ${EASING.out}`,
         }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: SPACING.sm }}><AppIcon name="search" size={24} color={t.textTertiary} /></div>
           <div style={{ fontSize: TYPO.body.size, color: t.textTertiary }}>{tr('search.noResults')}</div>

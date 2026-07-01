@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { PhotoFile, Preset, PresetAdjustment, ExportFormat, CropRegion } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
 import { AdjustmentPanel, buildEffectiveFilter } from './AdjustmentPanel';
@@ -8,8 +8,291 @@ import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 import { Select } from './Select';
 
+// ========== Image Blob / File URL Cache (LRU bounded) ==========
+/**
+ * Browser-compatible image formats that can be loaded via file:// URL directly.
+ * For these formats we skip the IPC + base64 + blob pipeline entirely,
+ * dramatically reducing memory usage.
+ */
+const BROWSER_FORMATS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp',
+  '.tiff', '.tif', '.avif', '.svg',
+]);
+
+/** Check if a file path points to a thumbnail rather than the original */
+function isThumbnailPath(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, '/');
+  return normalized.includes('/thumbnails/') || filePath.endsWith('_thumb.jpg');
+}
+
+/** Helper: extract file extension from a photo */
+function getPhotoExt(photo: PhotoFile): string {
+  const ext = (photo.fileFormat || photo.fileName.split('.').pop() || '').toLowerCase();
+  return '.' + ext;
+}
+
+function base64ToBlob(base64: string, mime: string): Blob {
+  const byteChars = atob(base64);
+  const byteNums = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNums[i] = byteChars.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNums);
+  return new Blob([byteArray], { type: mime });
+}
+
+/**
+ * LRU-limited blob/image URL cache keyed by photo ID.
+ * - Max 12 entries to keep memory bounded (was unbounded before)
+ * - Automatically evicts least-recently-used entries when full
+ * - Revokes blob: URLs on eviction to free browser memory
+ */
+const MAX_CACHE_ENTRIES = 24;
+const cacheKeys: string[] = [];
+const blobCache = new Map<string, string>();
+const pendingPreloads = new Map<string, Promise<string | null>>();
+
+function touchCache(id: string): void {
+  const idx = cacheKeys.indexOf(id);
+  if (idx >= 0) {
+    cacheKeys.splice(idx, 1);
+    cacheKeys.push(id);
+  }
+}
+
+function setCache(id: string, url: string): void {
+  if (blobCache.has(id)) {
+    touchCache(id);
+    return;
+  }
+  // Evict oldest entries if at capacity
+  while (cacheKeys.length >= MAX_CACHE_ENTRIES) {
+    const oldestId = cacheKeys.shift();
+    if (oldestId) {
+      const oldUrl = blobCache.get(oldestId);
+      if (oldUrl && oldUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(oldUrl);
+      }
+      blobCache.delete(oldestId);
+      pendingPreloads.delete(oldestId);
+    }
+  }
+  blobCache.set(id, url);
+  cacheKeys.push(id);
+}
+
+function getFromCache(id: string): string | undefined {
+  const val = blobCache.get(id);
+  if (val !== undefined) {
+    touchCache(id);
+  }
+  return val;
+}
+
+/** Convert a local file path to a blob URL using an Image element + canvas.
+ *  More reliable than fetch('file://') in Electron (no CORS issues).
+ */
+function imageToBlobUrl(filePath: string, maxWidth?: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = 'file://' + filePath;
+    img.onload = () => {
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (maxWidth && maxWidth > 0 && w > maxWidth) {
+        h = Math.round(h * (maxWidth / w));
+        w = maxWidth;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(URL.createObjectURL(blob));
+        } else {
+          resolve(null);
+        }
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+
+/**
+ * Ensure a photo's image data is cached as a blob/file URL.
+ * Returns the cached URL (instantly if already cached).
+ *
+ * For browser-compatible formats (JPEG, PNG, etc.), we use file:// URL directly
+ * to avoid the IPC + base64 + Blob pipeline, saving significant memory.
+ * For RAW formats, we fall through to IPC-based image data fetching.
+ */
+async function ensureBlobUrl(photo: PhotoFile, maxWidth?: number): Promise<string | null> {
+  // If cached as blob://, use it immediately. If file://, ignore it —
+  // file:// URLs are placed by getCachedOrRawUrl for instant first load,
+  // but don't re-encode from memory on re-navigation. We need a real blob: URL.
+  const cached = getFromCache(photo.id);
+  if (cached && cached.startsWith('blob:')) return cached;
+
+  const pending = pendingPreloads.get(photo.id);
+  if (pending) return pending;
+
+  const promise = (async (): Promise<string | null> => {
+    // Strategy 1: For browser-compatible formats (JPEG, PNG, etc.),
+    // use an Image element + canvas to produce a blob: URL.
+    // This is guaranteed to work in Electron and avoids IPC + base64.
+    const ext = getPhotoExt(photo);
+    const hasBrowserFormat = BROWSER_FORMATS.has(ext);
+    const hasValidPath = !!photo.filePath && !isThumbnailPath(photo.filePath);
+
+    if (hasBrowserFormat && hasValidPath) {
+      try {
+        const blobUrl = await imageToBlobUrl(photo.filePath, maxWidth);
+        if (blobUrl) {
+          setCache(photo.id, blobUrl);
+          return blobUrl;
+        }
+      } catch {
+        // Image approach failed, fall through
+      }
+    }
+
+    // Strategy 2: Use IPC-based image data fetching (base64 → blob).
+    // Works for all formats including RAW.
+    try {
+      if (window.photoForge.getImageData) {
+        const result = await window.photoForge.getImageData(photo.id, maxWidth);
+        if (result) {
+          const blob = base64ToBlob(result.data, result.mime);
+          const blobUrl = URL.createObjectURL(blob);
+          setCache(photo.id, blobUrl);
+          return blobUrl;
+        }
+      }
+    } catch {
+      // Fall through to URL-based loading
+    }
+
+    // Strategy 3: Final fallback — use the raw URL (photoforge:// or file:// thumbnail)
+    const url = getRawPhotoUrl(photo);
+    if (!url) return null;
+    setCache(photo.id, url);
+    return url;
+  })();
+
+  pendingPreloads.set(photo.id, promise);
+  const result = await promise;
+  pendingPreloads.delete(photo.id);
+  return result;
+}
+
+/** Resolve a fallback display URL for a photo */
+function getRawPhotoUrl(p: PhotoFile): string | null {
+  return p.displayUrl ||
+    (p.thumbnailPath ? 'file://' + p.thumbnailPath : null) ||
+    'photoforge://raw/' + encodeURIComponent(p.filePath) || null;
+}
+
+/** Get a cached URL synchronously, or compute the best URL on the fly.
+ *  For browser-compatible formats, prefers the full-resolution file:// URL
+ *  over the thumbnail, avoiding the thumbnail-to-full flicker on first load.
+ */
+function getCachedOrRawUrl(p: PhotoFile, preferFull: boolean = false): string {
+  // 1. Check cache first (instant re-navigation)
+  const cached = getFromCache(p.id);
+  if (cached) return cached;
+
+  // 2. For browser-compatible formats with a valid file path, use full-res file:// URL
+  //    (only for main image; filmstrip uses preferFull=false to get smaller thumbnails)
+  //    NOTE: we do NOT cache file:// URLs here — caching is handled by ensureBlobUrl
+  //    which creates blob: URLs for instant re-navigation.
+  if (preferFull) {
+    const ext = getPhotoExt(p);
+    if (BROWSER_FORMATS.has(ext) && p.filePath && !isThumbnailPath(p.filePath)) {
+      return 'file://' + p.filePath;
+    }
+  }
+
+  // 3. Fallback: display URL, thumbnail, or photoforge:// protocol
+  return getRawPhotoUrl(p) || '';
+}
+
+/**
+ * Preloads adjacent photos into the blob cache.
+ * Fetches image data via direct IPC (much faster than photoforge:// protocol)
+ * and stores as blob URLs in renderer memory.
+ */
+function usePhotoBlobCache(
+  currentPhoto: PhotoFile,
+  allPhotos: PhotoFile[],
+  onCacheReady?: () => void
+): void {
+  // Note: onCacheReady triggers re-render when blob URL arrives (for non-browser formats).
+  // The cache provides instant re-navigation via photo.id changes.
+  // Removing the callback would break the interface; kept for future use.
+  const preloadRef = useRef<number[]>([]);
+
+  // Stable dependency: only re-run when the list STRUCTURE changes
+  // (length or first/last IDs), NOT when photo metadata changes.
+  // This prevents parameter edits from cancelling & restarting preloads.
+  const listId = useMemo(
+    () => allPhotos.length > 0
+      ? allPhotos.length + '-' + allPhotos[0].id + '-' + allPhotos[allPhotos.length - 1].id
+      : '0',
+    [allPhotos]
+  );
+
+  useEffect(() => {
+    const idx = allPhotos.findIndex(p => p.id === currentPhoto.id);
+    if (idx < 0) return;
+
+    const toLoad: { photo: PhotoFile; delay: number }[] = [];
+
+    // Preload neighbors: offset 1 (immediate) at delay 0, farther ones staggered
+    for (let offset = 1; offset <= 5; offset++) {
+      const neighborDelay = offset <= 1 ? 0 : 50 * offset;
+      if (idx - offset >= 0) {
+        toLoad.push({ photo: allPhotos[idx - offset], delay: neighborDelay });
+      }
+      if (idx + offset < allPhotos.length) {
+        toLoad.push({ photo: allPhotos[idx + offset], delay: neighborDelay });
+      }
+    }
+
+    // Current photo: cache immediately (no delay, highest priority)
+    if (!blobCache.has(currentPhoto.id)) {
+      toLoad.unshift({ photo: currentPhoto, delay: 0 });
+    }
+
+    for (const { photo, delay } of toLoad) {
+      // Check both blob and file cache — if already cached in any form, skip
+      if (getFromCache(photo.id)) continue;
+      const t = window.setTimeout(() => {
+        ensureBlobUrl(photo, 800).then(url => {
+          if (url && photo.id === currentPhoto.id) {
+            onCacheReady?.();
+          }
+        });
+      }, delay);
+      preloadRef.current.push(t);
+    }
+
+    return () => {
+      // NOTE: Do NOT cancel old preloads! Previously-queued preloads continue
+      // so rapid navigation still populates the cache for previously viewed photos.
+    };
+  }, [currentPhoto.id, listId]);
+}
+
+
 interface PhotoDetailProps {
   photo: PhotoFile;
+  allPhotos: PhotoFile[];
+  onNavigate: (id: string) => void;
   presets: Preset[];
   onApplyPreset: (photoId: string, presetId: string) => void;
   onRemovePreset: (photoId: string) => void;
@@ -120,7 +403,18 @@ const InlineEdit: React.FC<{
   );
 };
 
-export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onApplyPreset, onRemovePreset, onUpdatePhoto, onBack, onToast, theme: t, defaultExportFormat, defaultExportQuality, preserveExif, colorSpace }) => {
+export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNavigate, presets, onApplyPreset, onRemovePreset, onUpdatePhoto, onBack, onToast, theme: t, defaultExportFormat, defaultExportQuality, preserveExif, colorSpace }) => {
+  // Inject CSS keyframe for cross-fade animation (once)
+  useEffect(() => {
+    const id = 'photoforge-detail-anim';
+    if (!document.getElementById(id)) {
+      const s = document.createElement('style');
+      s.id = id;
+      s.textContent = '@keyframes detailFadeIn { from { opacity: 0; } to { opacity: 1; } }';
+      document.head.appendChild(s);
+    }
+  }, []);
+
   const { t: tr, lang } = useI18n();
   const labelOptions: Array<{ key: PhotoFile['colorLabel']; labelKey: string; color: string }> = [
     { key: 'none', labelKey: 'detail.none', color: t.textTertiary },
@@ -133,6 +427,10 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   const [activeTab, setActiveTab] = useState<'info' | 'adjust' | 'presets' | 'export'>('info');
   const [tagInput, setTagInput] = useState('');
   const appliedPreset = photo.presetApplied ? presets.find(p => p.id === photo.presetApplied) : null;
+
+
+  // Preload adjacent photos for instant navigation
+  usePhotoBlobCache(photo, allPhotos);
 
   // Image viewer state
   const [scale, setScale] = useState(1);
@@ -155,6 +453,8 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   const [photoBounds, setPhotoBounds] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   // Draggable crop state
   const cropDragRef = useRef<{ handle: string; startX: number; startY: number; initRegion: CropRegion; initBounds: { w: number; h: number } } | null>(null);
+  const cropWorkingRef = useRef<CropRegion>({ x: 0, y: 0, width: 1, height: 1 });
+  const cropRafRef = useRef<number | null>(null);
   const [dragHandle, setDragHandle] = useState<string | null>(null);
 
   const startCropDrag = useCallback((e: React.MouseEvent, handle: string) => {
@@ -191,12 +491,10 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
     else if (h === 'ne') { nw = Math.max(0.05, r.width + dx); nh = Math.max(0.05, r.height - dy); ny = r.y + (r.height - nh); }
     else if (h === 'nw') { nw = Math.max(0.05, r.width - dx); nx = r.x + (r.width - nw); nh = Math.max(0.05, r.height - dy); ny = r.y + (r.height - nh); }
     if (cropPreset !== 'free' && h !== 'move') {
-      // Maintain aspect ratio
       const [wp, hp] = cropPreset.split(':').map(Number);
       const ratio = wp / hp;
       if (Math.abs(dx) > Math.abs(dy)) { nh = nw / ratio; }
       else { nw = nh * ratio; }
-      // Re-center
       if (h.includes('e')) { nx = r.x; }
       else if (h.includes('w')) { nx = r.x + (r.width - nw); }
       else { nx = r.x + (r.width - nw) / 2; }
@@ -204,15 +502,29 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       else if (h.includes('n')) { ny = r.y + (r.height - nh); }
       else { ny = r.y + (r.height - nh) / 2; }
     }
-    // Clamp
     if (nx < 0) nx = 0;
     if (ny < 0) ny = 0;
     if (nx + nw > 1) { nw = 1 - nx; }
     if (ny + nh > 1) { nh = 1 - ny; }
-    setCropRegion({ x: nx, y: ny, width: Math.max(0.05, nw), height: Math.max(0.05, nh) });
+    // Write to working ref synchronously (no re-render)
+    cropWorkingRef.current = { x: nx, y: ny, width: Math.max(0.05, nw), height: Math.max(0.05, nh) };
+    // Throttle state updates to ~30fps via requestAnimationFrame
+    if (cropRafRef.current === null) {
+      cropRafRef.current = requestAnimationFrame(() => {
+        cropRafRef.current = null;
+        setCropRegion({ ...cropWorkingRef.current });
+      });
+    }
   }, [cropPreset]);
 
   const stopCropDrag = useCallback(() => {
+    // Flush any pending rAF update
+    if (cropRafRef.current !== null) {
+      cancelAnimationFrame(cropRafRef.current);
+      cropRafRef.current = null;
+    }
+    // Commit the final working position to state
+    setCropRegion({ ...cropWorkingRef.current });
     cropDragRef.current = null;
     setDragHandle(null);
   }, []);
@@ -232,6 +544,13 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   // When entering crop mode: reset zoom, disable pan, measure photo bounds
   const enterCropMode = useCallback(() => {
     resetView();
+    // Initialize crop region from the existing photo crop (if any)
+    const existingCrop = photo.cropRegion;
+    if (existingCrop) {
+      setCropRegion({ ...existingCrop });
+    } else {
+      setCropRegion({ x: 0, y: 0, width: 1, height: 1 });
+    }
     setCropMode(true);
     // Measure after render
     requestAnimationFrame(() => {
@@ -248,9 +567,19 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       const y = (ch - h) / 2;
       setPhotoBounds({ x, y, w, h });
     });
-  }, [resetView]);
+  }, [resetView, photo]);
 
-  const confirmCrop = () => { onUpdatePhoto(photo.id, { cropRegion }); setCropMode(false); };
+  const confirmCrop = () => {
+    const isFullFrame = cropRegion.x <= 0 && cropRegion.y <= 0 && cropRegion.width >= 1 && cropRegion.height >= 1;
+    onUpdatePhoto(photo.id, { cropRegion: isFullFrame ? null : cropRegion });
+    setCropMode(false);
+  };
+  const resetCrop = () => {
+    // Reset the saved crop region entirely
+    onUpdatePhoto(photo.id, { cropRegion: null });
+    // Close crop mode
+    setCropMode(false);
+  };
   const handleFlipH = () => onUpdatePhoto(photo.id, { flipH: !photo.flipH });
   const handleFlipV = () => onUpdatePhoto(photo.id, { flipV: !photo.flipV });
   const handleRotate = () => onUpdatePhoto(photo.id, { rotation: (photo.rotation + 90) % 360 });
@@ -263,25 +592,19 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   const [exportApplyCrop, setExportApplyCrop] = useState(true);
   const [exportApplyRotationFlip, setExportApplyRotationFlip] = useState(true);
   const [exportNamingTemplate, setExportNamingTemplate] = useState('{filename}');
-  const [showPlaceholderMenu, setShowPlaceholderMenu] = useState(false);
   const [exportResultPath, setExportResultPath] = useState<string | null>(null);
 
-  const PLACEHOLDERS = [
-    { key: '{filename}', labelKey: 'export.placeholders.filename' },
-    { key: '{date}', labelKey: 'export.placeholders.date' },
-    { key: '{camera}', labelKey: 'export.placeholders.camera' },
-    { key: '{preset}', labelKey: 'export.placeholders.preset' },
-    { key: '{index}', labelKey: 'export.placeholders.index' },
-    { key: '{rating}', labelKey: 'export.placeholders.rating' },
+  const NAMING_PRESETS = [
+    { value: '{filename}', labelKey: 'export.namingPresetFilename' },
+    { value: '{date}_{filename}', labelKey: 'export.namingPresetDateFilename' },
+    { value: '{camera}_{filename}', labelKey: 'export.namingPresetCameraFilename' },
+    { value: '{filename}_{preset}', labelKey: 'export.namingPresetFilenamePreset' },
+    { value: '{year}-{month}-{day}_{filename}', labelKey: 'export.namingPresetFullDateFilename' },
   ];
-
-  const insertPlaceholder = (key: string) => {
-    setExportNamingTemplate(prev => prev + key);
-    setShowPlaceholderMenu(false);
-  };
 
   const previewNamingTemplate = (template: string): string => {
     const appliedPreset = photo.presetApplied ? presets.find(p => p.id === photo.presetApplied) : null;
+
     return template
       .replace('{filename}', photo.fileName.replace(/\.[^.]+$/, ''))
       .replace('{date}', photo.dateTaken ? photo.dateTaken.slice(0, 10) : 'unknown')
@@ -290,6 +613,9 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
       .replace('{index}', '1')
       .replace('{rating}', String(photo.rating));
   };
+
+  // Initialize thumbnail URLs for filmstrip display
+
 
   const handleExport = async () => {
     try {
@@ -329,17 +655,57 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
   // resolves the original via getSourcePath — never pass filePath from renderer
   // because it may have been overwritten with a display URL (file://… or photoforge://…)
   // Use full-resolution image for the detail view (not the tiny 400px thumbnail)
-  const [fullResSrc, setFullResSrc] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    window.photoForge.getPhotoFull(photo.id).then(url => {
-      if (!cancelled && url) setFullResSrc(url);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [photo.id]);
-  // Full-res if loaded, otherwise use protocol (4000px) as intermediate, then thumbnail as last resort
-  const imageSrc = fullResSrc || photo.displayUrl || photo.thumbnailPath || `photoforge://raw/${encodeURIComponent(photo.filePath)}`;
+  // Use displayUrl directly — it's already the correct resolved URL from IPC (no extra fetch needed)
+  // photo.displayUrl is computed by getDisplayUrl() which handles RAW conversion paths and file:// URLs
+  // Use cached blob URL if available, fall back to thumbnail path, then raw URL.
+  // Prioritizes instant display from disk thumbnail, upgrades to cached blob URL.
+  // Priority: blob cache (instant re-navigation) > thumbnail (instant first load) > raw URL (fallback)
+  // Cross-fade mechanism: keep the old image visible until the new one loads.
+  const rawUrl = useMemo(() => {
+    return getCachedOrRawUrl(photo, true) || (photo.displayUrl || 'photoforge://raw/800/' + encodeURIComponent(photo.filePath));
+  }, [photo.id, photo.filePath, photo.fileFormat, photo.thumbnailPath, photo.displayUrl]);
 
+  // Initialize displayedUrl to rawUrl on first mount (no flash),
+  // then use cross-fade for subsequent changes.
+  const [displayedUrl, setDisplayedUrl] = useState<string>(rawUrl);
+  const pendingUrlRef = useRef<string>('');
+  const imageUnmountRef = useRef(false);
+
+  // Preload the new image before swapping
+  useEffect(() => {
+    if (!rawUrl) return;
+    if (rawUrl === displayedUrl) return;
+    // If already pending, skip
+    if (rawUrl === pendingUrlRef.current) return;
+    pendingUrlRef.current = rawUrl;
+
+    // Preload using Image element
+    const preloader = new Image();
+    imageUnmountRef.current = false;
+
+    preloader.onload = () => {
+      if (imageUnmountRef.current) return;
+      if (pendingUrlRef.current === rawUrl) {
+        setDisplayedUrl(rawUrl);
+      }
+    };
+    preloader.onerror = () => {
+      // On error, still show the URL (browser will show broken image)
+      if (imageUnmountRef.current) return;
+      if (pendingUrlRef.current === rawUrl) {
+        setDisplayedUrl(rawUrl);
+      }
+    };
+    preloader.src = rawUrl;
+
+    return () => {
+      imageUnmountRef.current = true;
+      // Abort the preload
+      preloader.src = '';
+    };
+  }, [rawUrl, displayedUrl]);
+
+  const imageSrc = displayedUrl;
   const tabs = [
     { key: 'info' as const, label: tr('detail.info'), icon: <AppIcon name="info" size={14} /> },
     { key: 'adjust' as const, label: tr('detail.adjustTab'), icon: <AppIcon name="adjustments" size={14} /> },
@@ -377,8 +743,20 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
           </div>
           {cropMode ? (
             <>
-              <button style={{ ...s(t).iconBtn, background: t.accent, color: t.textInverse }} onClick={confirmCrop}>{tr('detail.confirmCrop')}</button>
-              <button style={s(t).iconBtn} onClick={() => setCropMode(false)}>{tr('detail.cancelCrop')}</button>
+              <button style={{ ...s(t).actionLabelBtn, background: t.accent, color: t.textInverse, fontWeight: 600 }} onClick={confirmCrop}
+                onMouseEnter={e => { e.currentTarget.style.background = t.accentHover; }}
+                onMouseLeave={e => { e.currentTarget.style.background = t.accent; }}
+              ><AppIcon name="check" size={14} color={t.textInverse} /><span style={{ fontSize: TYPO.small.size, marginLeft: 4 }}>{tr('detail.confirmCrop')}</span></button>
+              <button style={s(t).actionLabelBtn} onClick={() => setCropMode(false)}
+                onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
+                onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
+              ><AppIcon name="x" size={14} color={t.textPrimary} /><span style={{ fontSize: TYPO.small.size, marginLeft: 4 }}>{tr('detail.cancelCrop')}</span></button>
+              {photo.cropRegion && (
+                <button style={{ ...s(t).actionLabelBtn, border: `1px solid ${t.danger}`, color: t.danger }} onClick={resetCrop}
+                  onMouseEnter={e => { e.currentTarget.style.background = t.dangerLight; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
+                ><AppIcon name="rotate" size={14} color={t.danger} /><span style={{ fontSize: TYPO.small.size, marginLeft: 4 }}>复原</span></button>
+              )}
             </>
           ) : (
             <button style={s(t).iconBtn} onClick={enterCropMode}><AppIcon name="crop" size={14} color={t.textPrimary} /></button>
@@ -396,20 +774,52 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
           onMouseUp={cropMode ? stopCropDrag : handleMouseUp}
           onMouseLeave={cropMode ? stopCropDrag : handleMouseUp}>
           <div ref={imageContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', maxWidth: '90%', maxHeight: '90%' }}>
-          <CanvasRenderer src={imageSrc}
-            adjustments={effectiveAdj}
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              objectFit: 'contain',
-              borderRadius: 14,
-              boxShadow: SHADOW.lg,
-              transition: 'transform 0.05s ease-out',
-              userSelect: 'none',
-              transform: cropMode ? 'none' : `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px) ${[photo.flipH ? 'scaleX(-1)' : '', photo.flipV ? 'scaleY(-1)' : '', photo.rotation ? `rotate(${photo.rotation}deg)` : ''].filter(Boolean).join(' ')}`,
-            }}
-            alt={photo.fileName} draggable={false}
-          />
+          {/* When crop is saved (non-destructive), show only the cropped area via CSS clip + scale */}
+          {(() => {
+            const hasCrop = !cropMode && photo.cropRegion && photo.cropRegion !== null &&
+              (Math.abs(photo.cropRegion.width - 1) > 0.01 || Math.abs(photo.cropRegion.height - 1) > 0.01 ||
+               Math.abs(photo.cropRegion.x) > 0.01 || Math.abs(photo.cropRegion.y) > 0.01);
+            const cropScale = hasCrop ? Math.max(1 / photo.cropRegion!.width, 1 / photo.cropRegion!.height) : 1;
+            const cropOrigin = hasCrop
+              ? `${(photo.cropRegion!.x + photo.cropRegion!.width / 2) * 100}% ${(photo.cropRegion!.y + photo.cropRegion!.height / 2) * 100}%`
+              : 'center';
+            const baseTransform = cropMode ? 'none' : `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`;
+            const flipTransform = [photo.flipH ? 'scaleX(-1)' : '', photo.flipV ? 'scaleY(-1)' : '', photo.rotation ? `rotate(${photo.rotation}deg)` : ''].filter(Boolean).join(' ');
+            const combinedTransform = hasCrop
+              ? `${baseTransform} scale(${cropScale}) ${flipTransform}`
+              : cropMode ? 'none' : `${baseTransform} ${flipTransform}`;
+            return (
+              <div style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: hasCrop ? 'hidden' : 'visible',
+                borderRadius: 14,
+              }}>
+                <div key={imageSrc} style={{ 
+                  width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'detailFadeIn 0.15s ease-out',
+                }}>
+                <CanvasRenderer src={imageSrc}
+                  adjustments={effectiveAdj}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    borderRadius: 14,
+                    transition: 'transform 0.05s ease-out',
+                    userSelect: 'none',
+                    transform: combinedTransform,
+                    transformOrigin: hasCrop ? cropOrigin : 'center',
+                  }}
+                  alt={photo.fileName} draggable={false}
+                />
+                </div>
+              </div>
+            );
+          })()}
           {appliedPreset && <div style={s(t).presetTag}><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="sparkles" size={12} color={t.textInverse} />{appliedPreset.name}</span></div>}
           {photo.customAdjustments && Object.keys(photo.customAdjustments).length > 0 && (
             <div style={{ ...s(t).presetTag, left: 'auto', right: 12, background: t.warning }}><AppIcon name="adjustments" size={12} color={t.textInverse} /></div>
@@ -724,30 +1134,49 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
                 </div>
                 <div style={s(t).surfaceSection}>
                   <label style={s(t).label}>{tr('export.namingTemplate')}</label>
-                  <div style={{ display: 'flex', gap: SPACING.xs }}>
-                    <input style={{ ...s(t).selectInput, flex: 1 }} value={exportNamingTemplate} onChange={e => setExportNamingTemplate(e.target.value)}
-                      placeholder="{{filename}}"
-                    />
-                    <div style={{ position: 'relative' }}>
-                      <button style={{ ...s(t).actionBtn, fontSize: TYPO.small.size, padding: `${SPACING.xs}px ${SPACING.sm}px`, whiteSpace: 'nowrap' }}
-                        onClick={() => setShowPlaceholderMenu(!showPlaceholderMenu)}
-                        onMouseEnter={e => { e.currentTarget.style.background = t.accentLight; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                      ><span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>{tr('detail.insert')}<AppIcon name="chevronDown" size={12} color={t.textSecondary} /></span></button>
-                      {showPlaceholderMenu && (
-                        <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 2, background: t.dropdownBg, borderRadius: RADIUS.md, padding: SPACING.xs, boxShadow: SHADOW.lg, zIndex: 200, minWidth: 180 }}>
-                          {PLACEHOLDERS.map(p => (
-                            <button key={p.key} style={{ display: 'block', width: '100%', padding: `${SPACING.xs}px ${SPACING.sm}px`, border: 'none', borderRadius: RADIUS.sm, background: 'transparent', color: t.textPrimary, cursor: 'pointer', fontSize: TYPO.small.size, textAlign: 'left', transition: TRANSITION.bg }}
-                              onClick={() => insertPlaceholder(p.key)}
-                              onMouseEnter={e => { e.currentTarget.style.background = t.accentLight; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                            ><span style={{ color: t.accent, fontFamily: 'monospace', marginRight: SPACING.sm }}>{p.key}</span>{tr(p.labelKey)}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACING.sm }}>
+                    {NAMING_PRESETS.map(p => {
+                      const isActive = exportNamingTemplate === p.value;
+                      return (
+                        <button key={p.value}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: SPACING.xs,
+                            padding: SPACING.md + "px " + SPACING.sm + "px",
+                            borderRadius: RADIUS.md,
+                            border: "1.5px solid " + (isActive ? t.accent : t.borderLight),
+                            background: isActive ? t.accentBg : t.bgPrimary,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: TRANSITION.all,
+                            boxSizing: 'border-box',
+                            outline: 'none',
+                            minHeight: 46,
+                          }}
+                          onClick={() => setExportNamingTemplate(p.value)}
+                          onMouseEnter={e => {
+                            if (!isActive) {
+                              e.currentTarget.style.borderColor = t.accent;
+                              e.currentTarget.style.background = t.bgHover;
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!isActive) {
+                              e.currentTarget.style.borderColor = t.borderLight;
+                              e.currentTarget.style.background = t.bgPrimary;
+                            }
+                          }}
+                        >
+                          <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: TYPO.small.size, fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.textPrimary, lineHeight: 1.3, textAlign: 'center' }}>{p.value}</span>
+                          <span style={{ fontSize: TYPO.tiny.size, fontWeight: 400, color: isActive ? t.accent : t.textTertiary, lineHeight: 1.3, textAlign: 'center' }}>{tr(p.labelKey)}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, marginTop: SPACING.xs }}>
+                  <div style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, marginTop: SPACING.sm }}>
                     {tr('export.namingPreview')}: <span style={{ fontFamily: 'monospace', color: t.textSecondary }}>{previewNamingTemplate(exportNamingTemplate)}.{exportFormat}</span>
                   </div>
                 </div>
@@ -776,11 +1205,37 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, presets, onAppl
           </div>
         </div>
       </div>
+      {/* Filmstrip — Lightroom-style thumbnail navigation */}
+      {allPhotos.length > 1 && (
+        <div style={s(t).filmstrip}>
+          <div style={s(t).filmstripScroll}>
+            {allPhotos.map(p => {
+              const isActive = p.id === photo.id;
+              return (
+                <button
+                  key={p.id}
+                  style={s(t).filmstripThumb(t, isActive)}
+                  onClick={() => onNavigate(p.id)}
+                  title={p.fileName}
+                >
+                  <img
+                    src={getCachedOrRawUrl(p, false)}
+                    loading="lazy"
+                    style={s(t).filmstripImg}
+                    alt=""
+                    draggable={false}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const s = (t: Theme): Record<string, React.CSSProperties> => ({
+const s = (t: Theme): Record<string, any> => ({
   container: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   topBar: { display: 'flex', alignItems: 'center', gap: SPACING.md, padding: `${SPACING.md}px ${SPACING.xl}px ${SPACING.sm}`, background: t.bgPrimary, boxShadow: 'none' },
   backBtn: { padding: `${SPACING.sm}px ${SPACING.lg}px`, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textPrimary, cursor: 'pointer', fontSize: TYPO.body.size, transition: TRANSITION.all, boxShadow: 'none' },
@@ -800,7 +1255,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   field: { marginBottom: SPACING.lg },
   label: { display: 'block', fontSize: TYPO.small.size, color: t.textTertiary, marginBottom: SPACING.xs },
   sectionTitle: { fontSize: TYPO.small.size, fontWeight: 700, color: t.textPrimary, marginBottom: SPACING.md, textTransform: 'uppercase', letterSpacing: 0.8 },
-  surfaceSection: { marginBottom: SPACING.lg, padding: `${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary, borderRadius: 14, boxShadow: 'none' },
+  surfaceSection: { marginBottom: SPACING.md, padding: 0, background: 'transparent', borderRadius: 0, boxShadow: 'none' },
   starBtn: { border: 'none', background: t.bgSecondary, cursor: 'pointer', fontSize: 20, transition: TRANSITION.all, width: 32, height: 32, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'none' },
   colorBtn: { width: 24, height: 24, borderRadius: '50%', border: 'none', cursor: 'pointer', transition: TRANSITION.all },
   tagChip: { display: 'inline-flex', alignItems: 'center', gap: SPACING.xs, padding: `4px ${SPACING.sm}px`, background: t.bgSecondary, borderRadius: RADIUS.pill, fontSize: TYPO.small.size, color: t.textPrimary },
@@ -809,7 +1264,7 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   fieldInput: { padding: `${SPACING.sm}px ${SPACING.md}px`, border: `1px solid ${t.border}`, borderRadius: 12, background: t.bgInput, color: t.textPrimary, fontSize: TYPO.small.size, outline: 'none', boxShadow: 'none' },
   addTagBtn: { padding: `${SPACING.sm}px ${SPACING.md}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: 14, transition: TRANSITION.all, fontWeight: 600 },
   separator: { margin: `${SPACING.lg}px 0` },
-  metaRow: { display: 'flex', justifyContent: 'space-between', gap: SPACING.md, padding: `${SPACING.sm}px ${SPACING.md}px`, borderRadius: 12, background: t.bgPrimary, marginBottom: SPACING.xs },
+  metaRow: { display: 'flex', justifyContent: 'space-between', gap: SPACING.md, padding: `${SPACING.sm}px 0`, borderRadius: 0, background: 'transparent', marginBottom: 0, borderBottom: 'none' },
   metaLabel: { fontSize: TYPO.small.size, color: t.textTertiary },
   metaValue: { fontSize: TYPO.small.size, color: t.textPrimary, textAlign: 'right' },
   presetBtn: { padding: `${SPACING.sm}px ${SPACING.xs}px`, borderRadius: RADIUS.sm, cursor: 'pointer', fontSize: TYPO.small.size, textAlign: 'center', display: 'block', width: '100%', border: 'none', marginBottom: SPACING.xs, background: t.bgCard, transition: TRANSITION.all },
@@ -821,4 +1276,41 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   checkboxLabel: { display: 'flex', alignItems: 'center', gap: SPACING.sm, fontSize: TYPO.small.size, color: t.textSecondary, cursor: 'pointer', padding: `${SPACING.sm}px ${SPACING.md}px`, borderRadius: 12, background: t.bgPrimary, boxShadow: 'none' },
   exportBtn: { width: '100%', padding: `${SPACING.md}px`, border: 'none', borderRadius: 12, background: t.accent, color: t.textInverse, cursor: 'pointer', fontSize: TYPO.body.size, fontWeight: 600, marginTop: SPACING.sm, transition: TRANSITION.all },
   actionBtn: { padding: `${SPACING.sm}px ${SPACING.lg}px`, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textPrimary, cursor: 'pointer', fontSize: TYPO.small.size, transition: TRANSITION.all, boxShadow: 'none' },
+
+  // Filmstrip
+  filmstrip: {
+    display: 'flex',
+    alignItems: 'center',
+    height: 64,
+    background: t.bgPrimary,
+    borderTop: `1px solid ${t.borderLight}`,
+    padding: `0 ${SPACING.md}px`,
+    flexShrink: 0,
+    overflow: 'hidden',
+  } as React.CSSProperties,
+  filmstripScroll: {
+    display: 'flex',
+    gap: SPACING.sm,
+    overflow: 'auto',
+    padding: `${SPACING.sm}px 0`,
+    alignItems: 'center',
+  } as React.CSSProperties,
+  filmstripThumb: (t: Theme, active: boolean): React.CSSProperties => ({
+    flexShrink: 0,
+    width: 64,
+    height: 44,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+    border: active ? `2px solid ${t.accent}` : `2px solid transparent`,
+    cursor: 'pointer',
+    padding: 0,
+    background: t.bgSecondary,
+    transition: `opacity ${DURATION.fast}ms ${EASING.out}`,
+    opacity: active ? 1 : 0.55,
+  }),
+  filmstripImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  } as React.CSSProperties,
 });

@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('photoForge', {
   getPhotoThumbnail: (id: string) => ipcRenderer.invoke(IPC.GET_PHOTO_THUMBNAIL, id),
   getPhotoFull: (id: string) => ipcRenderer.invoke(IPC.GET_PHOTO_FULL, id),
   getPhotoPreview: (id: string) => ipcRenderer.invoke(IPC.GET_PHOTO_PREVIEW, id),
+  generateThumbnail: (id: string) => ipcRenderer.invoke(IPC.GENERATE_THUMBNAIL, id),
+  getImageData: (id: string, maxWidth?: number) => ipcRenderer.invoke(IPC.GET_IMAGE_DATA, id, maxWidth),
   deletePhotos: (ids: string[]) => ipcRenderer.invoke(IPC.DELETE_PHOTOS, ids),
   updatePhotoMeta: (id: string, updates: any) => ipcRenderer.invoke(IPC.UPDATE_PHOTO_META, id, updates),
   transformPhoto: (id: string, transforms: any) => ipcRenderer.invoke(IPC.TRANSFORM_PHOTO, id, transforms),
@@ -108,6 +110,8 @@ declare global {
       getPhotoThumbnail: (id: string) => Promise<string | null>;
       getPhotoFull: (id: string) => Promise<string | null>;
       getPhotoPreview: (id: string) => Promise<string | null>;
+      generateThumbnail: (id: string) => Promise<string | null>;
+      getImageData: (id: string, maxWidth?: number) => Promise<{ data: string; mime: string } | null>;
       deletePhotos: (ids: string[]) => Promise<number>;
       updatePhotoMeta: (id: string, updates: any) => Promise<boolean>;
       transformPhoto: (id: string, transforms: any) => Promise<boolean>;

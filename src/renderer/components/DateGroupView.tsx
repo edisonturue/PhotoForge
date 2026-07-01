@@ -152,7 +152,7 @@ export const DateGroupView: React.FC<DateGroupViewProps> = ({ photos, onSelect, 
               >
                 <div style={{ aspectRatio: '1', overflow: 'hidden', background: t.bgSecondary }}>
                   <img
-                    src={photo.displayUrl || photo.thumbnailPath || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
+                    src={photo.displayUrl || (photo.thumbnailPath ? `file://${photo.thumbnailPath}` : null) || (photo.fileFormat.includes('RAW') || photo.fileFormat.includes('NEF') || photo.fileFormat.includes('CR') ? `photoforge://raw/800/${encodeURIComponent(photo.filePath)}` : `photoforge://raw/${encodeURIComponent(photo.filePath)}`)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     loading="lazy" alt={photo.fileName}
                   />
