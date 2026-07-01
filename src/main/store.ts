@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PhotoFile, Collection, AppSettings, DEFAULT_SETTINGS, FilterCriteria, ImportBatch } from '../shared/types';
-import { THUMBNAILS_DIR, MODIFIED_DIR, LIBRARY_SUBDIR } from '../shared/constants';
+import { THUMBNAILS_DIR, MODIFIED_DIR, LIBRARY_SUBDIR, cleanCameraModel } from '../shared/constants';
 
 interface StorageStats {
   totalPhotos: number;
@@ -120,6 +120,15 @@ export class PhotoStore {
                   }
                 } catch { /* sips failed */ }
               }
+            }
+          }
+
+          // Migration: clean existing camera model names (remove CORPORATION/INC. etc.)
+          if (p.cameraModel) {
+            const cleaned = cleanCameraModel(p.cameraModel);
+            if (cleaned !== p.cameraModel) {
+              p.cameraModel = cleaned;
+              needsSave = true;
             }
           }
 
