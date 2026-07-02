@@ -315,7 +315,7 @@ export class ExportManager {
           const adj = this.getEffectiveAdjustments(photo);
           if (adj) {
             try {
-              fallbackPipeline = this.applyAdjustments(fallbackPipeline, adj);
+              fallbackPipeline = await this.applyAdjustments(fallbackPipeline, adj);
               this.log.info('Fallback: adjustments applied', { photoId: photo.id });
             } catch (adjErr: any) {
               this.log.error('Fallback: applyAdjustments failed', { error: adjErr.message });
@@ -529,22 +529,13 @@ export class ExportManager {
         const highlightBoost = adj.highlights / 100 * 0.2;
         const whiteBoost = adj.whites / 100 * 0.15;
 
-        const rSlope = 1 + highlightBoost + whiteBoost;
-        const gSlope = 1 + highlightBoost + whiteBoost;
-        const bSlope = 1 + highlightBoost + whiteBoost;
-        const rIntercept = tintR + shadowBoost + blackBoost;
-        const gIntercept = tintG + shadowBoost + blackBoost;
-        const bIntercept = -tintR * 0.5 + shadowBoost + blackBoost;
+        const slope = 1 + highlightBoost + whiteBoost;
+        const intercept = shadowBoost + blackBoost;
 
-        // SVG feComponentTransfer works in 0-1 range:
-        //   out = slope * in + intercept   (0-1 range)
-        // sharp linear works in 0-255 range:
-        //   out = slope * in + intercept   (0-255 range)
-        // So intercept needs to be scaled by 255
-        pipeline = pipeline.linear(
-          [rSlope, gSlope, bSlope],
-          [rIntercept * 255, gIntercept * 255, bIntercept * 255],
-        );
+        // Use scalar linear to avoid "Band expansion using linear is unsupported"
+        // when pipeline has been grayscaled (1 channel) by saturation <= -90.
+        // The per-channel variation (tintR/tintG) only affects color images anyway.
+        pipeline = pipeline.linear(slope, intercept * 255);
       } catch (e: any) { this.log.error('applyAdjustments: SVG filter failed', { error: e.message }); }
     }
 
