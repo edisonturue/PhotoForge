@@ -396,13 +396,9 @@ export class PhotoStore {
     this.saveRecentImports();
     return batch;
   }
-
   getRecentImports(): ImportBatch[] {
-    // Filter out batches whose photo IDs no longer exist
-    return this.recentImports.map(batch => {
-      const existingIds = batch.photoIds.filter(id => this.photos.has(id));
-      return { ...batch, photoIds: existingIds, count: existingIds.length };
-    }).filter(batch => batch.count > 0).slice(0, 10);
+    this.cleanupRecentImports();
+    return this.recentImports.slice(0, 10);
   }
 
   getImportBatchPhotos(batchId: string): PhotoFile[] {
@@ -414,21 +410,35 @@ export class PhotoStore {
   }
 
 
+
   private cleanupRecentImports(): void {
     for (let i = this.recentImports.length - 1; i >= 0; i--) {
       const batch = this.recentImports[i];
       const validIds = batch.photoIds.filter(id => this.photos.has(id));
-      if (validIds.length !== batch.photoIds.length || validIds.length === 0) {
-        batch.photoIds = validIds;
-        batch.count = validIds.length;
+
+      // Deduplicate: same photoIds -> keep only the newest
+      const idsJson = JSON.stringify(validIds);
+      const newerDuplicate = this.recentImports.some((other, j) =>
+        j !== i && j > i && JSON.stringify(other.photoIds.filter(id => this.photos.has(id))) === idsJson
+      );
+      if (newerDuplicate) { this.recentImports.splice(i, 1); continue; }
+
+      // Corrupted batch from old bug: all photos older than the batch itself
+      if (validIds.length > 0) {
+        const batchTimeMs = new Date(batch.timestamp).getTime();
+        const allPhotosOlder = validIds.every(id => {
+          const m = id.match(/^photo-(\d+)-/);
+          return m && parseInt(m[1], 10) < batchTimeMs - 1000;
+        });
+        if (allPhotosOlder) { this.recentImports.splice(i, 1); continue; }
       }
-      if (batch.count === 0) {
-        this.recentImports.splice(i, 1);
-      }
+
+      batch.photoIds = validIds;
+      batch.count = validIds.length;
+      if (batch.count === 0) { this.recentImports.splice(i, 1); }
     }
     this.saveRecentImports();
   }
-
   private removePhotoFromRecentImports(photoId: string): void {
     let changed = false;
     for (let i = this.recentImports.length - 1; i >= 0; i--) {

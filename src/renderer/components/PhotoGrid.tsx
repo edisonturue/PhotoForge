@@ -295,7 +295,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   wrapper: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: t.bgPhotoStage, minHeight: 0 },
   controls: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.sm}px 0`, background: t.bgPhotoStage, flexShrink: 0, borderBottom: `1px solid ${t.borderLight}` },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: `0 ${SPACING.md}px ${SPACING.md}px 0`, minHeight: 0 },
+  scrollArea: { flex: 1, overflowY: 'auto', padding: `3px ${SPACING.md}px ${SPACING.md}px 3px`, minHeight: 0 },
   grid: { display: 'grid', gap: SPACING.lg },
   card: {
     background: t.bgPhotoSurface, borderRadius: RADIUS.md, overflow: 'hidden',

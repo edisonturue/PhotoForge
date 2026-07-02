@@ -212,15 +212,14 @@ export const App: React.FC = () => {
   const [showImport, setShowImport] = useState(false);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const importCompletedRef = useRef(false);
   const [manageMode, setManageMode] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [missingFiles, setMissingFiles] = useState<Array<{ id: string; fileName: string; filePath: string }>>([]);
   const [recentImports, setRecentImports] = useState<ImportBatch[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const importCompletedRef = useRef(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [importSuccessCount, setImportSuccessCount] = useState(0);
 
   const { toasts, addToast, dismissToast } = useToast();
   const history = useHistory();
@@ -240,6 +239,8 @@ export const App: React.FC = () => {
 
   const { photos, loading, refreshPhotos, updatePhoto, deletePhotos } = usePhotos();
   const { presets, applyPreset, removePreset, createPreset, deletePreset, refreshPresets: loadPresets } = usePresets();
+  const photosRef = useRef(photos);
+  useEffect(() => { photosRef.current = photos; });
 
   const activePhoto = photos.find(p => p.id === activePhotoId) || null;
 
@@ -269,13 +270,22 @@ export const App: React.FC = () => {
     return () => { unsub(); };
   }, []);
 
+  // ========== Track import completion (modal shows "完成" button) ==========
+  useEffect(() => {
+    if (importProgress && importProgress.stage === "complete" && !importCompletedRef.current) {
+      importCompletedRef.current = true;
+    }
+  }, [importProgress]);
+
   // ========== Recent Imports & Album Actions ==========
   const handleSelectBatch = useCallback((photoIds: string[]) => {
-    // Only select photos that still exist
-    const validIds = photoIds.filter(id => photos.some(p => p.id === id));
+    // Use ref to avoid stale closure when photos are deleted
+    const validIds = photoIds.filter(id => photosRef.current.some(p => p.id === id));
+    // If all photos in this batch were deleted, do nothing
+    if (validIds.length === 0) return;
     setSelectedIds(new Set(validIds));
-    setFilter({ ...filter, search: '' });
-  }, [filter, photos]);
+    setFilter({ ...filter, search: "" });
+  }, [filter]);
 
   const handleExportAlbum = useCallback(async (photoIds: string[]) => {
     try {
@@ -358,26 +368,27 @@ export const App: React.FC = () => {
     if (updates.language) setLang(updates.language);
   }, [settings, setLang]);
 
-  const handleImport = useCallback(async (sourcePaths: string[], importMode: 'copy' | 'reference') => {
+  const handleImport = useCallback(async (sourcePaths: string[], importMode: "copy" | "reference") => {
     try {
+      importCompletedRef.current = false;
       setSettings(prev => ({ ...prev, importMode }));
       await window.photoForge.updateSettings({ importMode });
-      const result = await window.photoForge.importFiles({ sourcePaths, copyToLibrary: importMode === 'copy', libraryPath: await window.photoForge.getLibraryPath(), generateThumbnails: true, thumbnailSize: settings.thumbnailSize, extractMetadata: true, detectDuplicates: true, fileExtensions: [] });
-      if (result.imported > 0) {
-        importCompletedRef.current = true;
-        setImportProgress(null);
-        // Let ImportModal show success overlay + exit animation, then onClose will refresh
-      } else {
-        // Nothing was imported — close immediately
-        cbRef.current.setShowImport(false);
-      }
+      const result = await window.photoForge.importFiles({
+        sourcePaths, copyToLibrary: importMode === "copy",
+        libraryPath: await window.photoForge.getLibraryPath(),
+        generateThumbnails: true, thumbnailSize: settings.thumbnailSize,
+        extractMetadata: true, detectDuplicates: true, fileExtensions: []
+      });
+      // Refresh photos in background so user can see them while reviewing
+      refreshPhotos();
+      fetchRecentImports();
+      setRefreshKey(k => k + 1);
     } catch (err) {
-      cbRef.current.setShowImport(false);
-      addToast('error', t('toast.importFailed'), 5000);
+      setShowImport(false);
+      setImportProgress(null);
+      addToast("error", t("toast.importFailed"), 5000);
     }
-  }, [settings, addToast, t]);
-
-  // Track last clicked photo index for Shift+click range selection
+  }, [settings, addToast, t, refreshPhotos, fetchRecentImports]);
   const lastClickedIndexRef = useRef(-1);
   const handleSelect = useCallback((id: string, multi = false, shift = false) => {
     setSelectedIds(prev => {
@@ -501,6 +512,8 @@ export const App: React.FC = () => {
     setShowDeleteConfirm(false);
     try {
       await deletePhotos(ids);
+      // Re-fetch to sync with main process (ensures recent imports are cleaned up)
+      await refreshPhotos();
       // Record deletion in history for undo
       const entry = createBatchEntry('deletePhotos', `${t('history.delete')} ${ids.length} ${t('history.photos')}`, deletedPhotos.map(p => ({
         id: p.id,
@@ -513,7 +526,7 @@ export const App: React.FC = () => {
       await fetchRecentImports();
     }
     catch { addToast('error', t('toast.deleteFailed'), 5000); }
-  }, [selectedIds, photos, deletePhotos, history, addToast, t, fetchRecentImports]);
+  }, [selectedIds, photos, deletePhotos, refreshPhotos, history, addToast, t, fetchRecentImports]);
 
   const handleUndo = useCallback(async () => {
     const entry = history.undo();
@@ -853,7 +866,7 @@ export const App: React.FC = () => {
         onModuleChange={handleModuleChange}
         theme={theme}
         // Browse actions
-        onImport={() => setShowImport(true)}
+        onImport={() => { importCompletedRef.current = false; setImportProgress(null); setShowImport(true); }}
         onToggleSidebar={() => cbRef.current.setSidebarCollapsed(!sidebarCollapsed)}
                 sort={sort}
         onSortChange={setSort}
@@ -1020,7 +1033,7 @@ export const App: React.FC = () => {
 
       {/* Import modal */}
       {showImport && (
-        <ImportModal onImport={handleImport} onClose={() => { setImportProgress(null); cbRef.current.setShowImport(false); if (importCompletedRef.current) { importCompletedRef.current = false; refreshPhotos(); setRefreshKey(k => k + 1); addToast('success', t('toast.importComplete'), 3000); } }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
+        <ImportModal onImport={handleImport} onClose={() => { if (importCompletedRef.current) { addToast('success', t('toast.importComplete'), 3000); refreshPhotos(); fetchRecentImports(); setRefreshKey(k => k + 1); } importCompletedRef.current = false; setImportProgress(null); setShowImport(false); }} progress={importProgress} defaultImportMode={settings.importMode} theme={theme} />
       )}
 
       {/* Toasts */}

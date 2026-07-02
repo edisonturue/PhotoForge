@@ -100,11 +100,11 @@ export class ExportManager {
         const jpegPath = await getConvertedJpegPath(sourcePath, convertedDir, 9999);
 
         const sharp = require('sharp');
-        let pipeline = sharp(jpegPath, { limitInputPixels: this.getPixelLimit() });
+        let pipeline = sharp(jpegPath, { limitInputPixels: this.getPixelLimit() }).rotate();
         // Apply adjustments
         const adj = this.getEffectiveAdjustments(photo);
         if (adj) pipeline = await this.applyAdjustments(pipeline, adj);
-        if (settings.preserveExif) pipeline = pipeline.withMetadata();
+        if (settings.preserveExif) pipeline = pipeline.withMetadata({ orientation: 0 });
         const ext = path.extname(outputPath).toLowerCase();
         if (ext === '.png') pipeline = pipeline.png();
         else if (ext === '.webp') pipeline = pipeline.webp({ quality: 90 });
@@ -114,12 +114,12 @@ export class ExportManager {
       }
 
       const sharp = require('sharp');
-      let pipeline = sharp(sourcePath, { failOn: 'none', limitInputPixels: this.getPixelLimit() });
+      let pipeline = sharp(sourcePath, { failOn: 'none', limitInputPixels: this.getPixelLimit() }).rotate();
       // Apply adjustments
       const adj = this.getEffectiveAdjustments(photo);
       if (adj) pipeline = await this.applyAdjustments(pipeline, adj);
       const ext = path.extname(outputPath).toLowerCase();
-      if (settings.preserveExif) pipeline = pipeline.withMetadata();
+      if (settings.preserveExif) pipeline = pipeline.withMetadata({ orientation: 0 });
       if (ext === '.jpg' || ext === '.jpeg') {
         pipeline = pipeline.jpeg({ quality: 95 });
       } else if (ext === '.png') {
@@ -200,7 +200,7 @@ export class ExportManager {
 
       const sharp = require('sharp');
 
-      let pipeline = sharp(workingPath, { failOn: 'none', limitInputPixels: this.getPixelLimit() });
+      let pipeline = sharp(workingPath, { failOn: 'none', limitInputPixels: this.getPixelLimit() }).rotate();
 
       // Apply crop
       if (options.applyCrop && photo.cropRegion) {
@@ -245,7 +245,7 @@ export class ExportManager {
 
       // Preserve EXIF data if requested
       if (effectivePreserveExif) {
-        pipeline = pipeline.withMetadata();
+        pipeline = pipeline.withMetadata({ orientation: 0 });
       }
 
       // Set output format + color space
@@ -310,7 +310,7 @@ export class ExportManager {
           workingPath = sourcePath;
         }
         // Try to apply adjustments in the fallback too
-        let fallbackPipeline = sharp(workingPath, { failOn: 'none' });
+        let fallbackPipeline = sharp(workingPath, { failOn: 'none' }).rotate();
         if (options.applyPreset) {
           const adj = this.getEffectiveAdjustments(photo);
           if (adj) {

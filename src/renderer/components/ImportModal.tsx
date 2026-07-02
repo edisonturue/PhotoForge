@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ImportProgress } from '../../shared/types';
 import { Theme, SPACING, RADIUS, SHADOW, TYPO, TRANSITION, DURATION, EASING } from '../styles/theme';
-import { useI18n, Lang } from '../i18n';
+import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 
 interface ImportModalProps {
@@ -13,13 +13,12 @@ interface ImportModalProps {
 }
 
 export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, progress, defaultImportMode, theme: t }) => {
-  const { t: tr, lang } = useI18n();
+  const { t: tr } = useI18n();
   const [paths, setPaths] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const [importMode, setImportMode] = useState<'copy' | 'reference'>(defaultImportMode);
   const [rememberChoice, setRememberChoice] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   const stageLabels: Record<string, string> = {
     scanning: tr('import.stage.scanning'), copying: tr('import.stage.copying'),
@@ -29,32 +28,22 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
   const pct = progress ? Math.round((progress.current / progress.total) * 100) : 0;
   useEffect(() => { setImportMode(defaultImportMode); }, [defaultImportMode]);
 
-  const handleDone = useCallback(() => {
+  const handleClose = useCallback(() => {
     setExiting(true);
     setTimeout(onClose, DURATION.normal);
   }, [onClose]);
 
-  // Show success overlay when import completes, auto-close after 2s if user hasn't clicked Done
-  useEffect(() => {
-    if (progress?.stage === 'complete' && !exiting && !showSuccess) {
-      setShowSuccess(true);
-      const closeTimer = setTimeout(() => {
-        handleDone();
-      }, 2000);
-      return () => clearTimeout(closeTimer);
-    }
-  }, [progress?.stage, exiting, showSuccess, handleDone]);
-
-  // Prevent overlay click when showing success or importing
   const handleOverlayClick = () => {
     if (!progress) onClose();
   };
+
+  const isComplete = progress?.stage === 'complete';
 
   return (
     <div style={{
       ...s(t).overlay,
       animation: exiting ? `scaleOut ${DURATION.normal}ms ${EASING.out} forwards` : 'none',
-    }} onClick={handleOverlayClick}>
+    }} onClick={() => { if (isComplete) handleClose(); }}>
       <div style={{
         ...s(t).modal,
         animation: exiting ? `scaleOut ${DURATION.normal}ms ${EASING.out} forwards` : 'none',
@@ -62,7 +51,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
         {/* Fixed header */}
         <div style={s(t).header}>
           <h2 style={s(t).title}>{tr('import.title')}</h2>
-          <button style={s(t).closeBtn} onClick={onClose}
+          <button style={s(t).closeBtn} onClick={handleClose}
             onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}>
             <AppIcon name="close" size={14} color={t.textSecondary} />
@@ -85,7 +74,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
           </div>
         </div>
         {/* Scrollable body: drop zone + path list + progress + formats */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.xl}px`, minHeight: 0, position: 'relative' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${SPACING.xl}px`, minHeight: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING.lg, minHeight: 0 }}>
           <div style={{ ...s(t).dropZone, borderColor: dragging ? t.accent : t.border, background: dragging ? t.accentBg : t.bgSecondary }}
             onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
@@ -98,68 +87,28 @@ export const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, pro
             }}>{tr('import.selectFiles')}</button>
           </div>
           {paths.length > 0 && (<div style={s(t).pathList}>{paths.map((p, i) => (<div key={i} style={s(t).pathItem}><span style={s(t).pathText}>{p}</span><button style={s(t).removeBtn} onClick={() => setPaths(prev => prev.filter((_, idx) => idx !== i))}><AppIcon name="close" size={12} color={t.textTertiary} /></button></div>))}</div>)}
-          {progress && !showSuccess && (<div style={s(t).progressArea}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: SPACING.xs }}><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{stageLabels[progress.stage] || progress.stage}</span><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{pct}%</span></div><div style={s(t).progressBar}><div style={{ ...s(t).progressFill, width: `${pct}%` }} /></div>{progress.currentFile && (<div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{progress.currentFile}</div>)}</div>)}
+          {progress && (<div style={s(t).progressArea}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: SPACING.xs }}><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{stageLabels[progress.stage] || progress.stage}</span><span style={{ fontSize: TYPO.small.size, color: t.textSecondary }}>{pct}%</span></div><div style={s(t).progressBar}><div style={{ ...s(t).progressFill, width: `${pct}%`, background: progress.stage === 'complete' ? t.success : t.accent }} /></div>{progress.currentFile && (<div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{progress.currentFile}</div>)}</div>)}
           <div style={s(t).formats}><div style={{ fontSize: TYPO.caption.size, color: t.textTertiary, marginBottom: SPACING.xs }}>{tr('import.supportedFormats')}</div><div style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, lineHeight: 1.5 }}>JPEG · PNG · GIF · BMP · TIFF · WebP · HEIC/HEIF · AVIF<br/>Canon CR2/CR3 · Nikon NEF/NRW · Sony ARW · Fujifilm RAF · Olympus ORF · Panasonic RW2 · Adobe DNG · Pentax PEF · Samsung SRW · PhaseOne IIQ · Hasselblad 3FR/FFF · Sigma X3F</div></div>
           </div>
-
-          {/* Success overlay — fades in when import completes */}
-          {showSuccess && (
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: t.bgPrimary, borderRadius: RADIUS.xl,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              animation: `fadeInUp ${DURATION.normal}ms ${EASING.out} both`,
-              zIndex: 10,
-              gap: SPACING.lg,
-            }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%',
-                background: t.successLight,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                animation: `successPulse ${DURATION.slow}ms ${EASING.out}`,
-              }}>
-                <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke={t.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" strokeDasharray={100} strokeDashoffset={0}
-                    style={{ animation: `checkmark ${DURATION.normal}ms ${EASING.out} forwards` }} />
-                </svg>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: TYPO.heading.size, fontWeight: 600, color: t.textPrimary, marginBottom: SPACING.xs }}>
-                  {tr('import.stage.complete')}
-                </div>
-                <div style={{ fontSize: TYPO.body.size, color: t.textSecondary }}>
-                  {progress ? `${progress.current} ${tr('grid.photoCount')}` : ''}
-                </div>
-              </div>
-              <button
-                style={{
-                  padding: `${SPACING.sm}px ${SPACING.xxl}px`,
-                  border: 'none',
-                  borderRadius: RADIUS.md,
-                  background: t.accent,
-                  color: t.textInverse,
-                  cursor: 'pointer',
-                  fontSize: TYPO.body.size,
-                  fontWeight: 600,
-                }}
-                onClick={handleDone}
-                onMouseEnter={e => { e.currentTarget.style.background = t.accentHover; }}
-                onMouseLeave={e => { e.currentTarget.style.background = t.accent; }}
-              >
-                {tr('import.done')}
-              </button>
-            </div>
-          )}
         </div>
         {/* Fixed footer actions */}
         <div style={s(t).actions}>
           <label style={{ fontSize: TYPO.caption.size, color: t.textTertiary, display: 'flex', alignItems: 'center', gap: SPACING.xs, marginRight: 'auto' }}><input type="checkbox" checked={rememberChoice} onChange={e => setRememberChoice(e.target.checked)} />{tr('import.remember')}</label>
-          <button style={s(t).cancelBtn} onClick={onClose}
-            onMouseEnter={e => { if (!progress) { e.currentTarget.style.background = t.bgHover; } }}
-            onMouseLeave={e => { if (!progress) { e.currentTarget.style.background = t.bgSecondary; } }} disabled={!!progress || showSuccess}>{tr('import.cancel')}</button>
-          <button style={{ ...s(t).importBtn, opacity: paths.length === 0 || !!progress || showSuccess ? 0.5 : 1 }} onClick={() => onImport(paths, importMode)} disabled={paths.length === 0 || !!progress || showSuccess}>
-            {progress ? tr('import.importing') : tr('import.start')}
-          </button>
+          {isComplete ? (
+            <button style={{ ...s(t).importBtn, background: '#fff', color: t.accent, border: `1.5px solid ${t.accent}` }}
+              onClick={handleClose}>
+              {tr('import.done')}
+            </button>
+          ) : (
+            <>
+              <button style={s(t).cancelBtn} onClick={handleClose}
+                onMouseEnter={e => { if (!progress) { e.currentTarget.style.background = t.bgHover; } }}
+                onMouseLeave={e => { if (!progress) { e.currentTarget.style.background = t.bgSecondary; } }} disabled={!!progress}>{tr('import.cancel')}</button>
+              <button style={{ ...s(t).importBtn, opacity: paths.length === 0 || !!progress ? 0.5 : 1 }} onClick={() => onImport(paths, importMode)} disabled={paths.length === 0 || !!progress}>
+                {progress ? tr('import.importing') : tr('import.start')}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

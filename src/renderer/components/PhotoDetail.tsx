@@ -7,6 +7,7 @@ import { CanvasRenderer, useEffectiveAdjustments } from './CanvasRenderer';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
 import { Select } from './Select';
+import { NamingTemplateDropdown } from "./NamingTemplateDropdown";
 
 // ========== Image Blob / File URL Cache (LRU bounded) ==========
 /**
@@ -589,18 +590,10 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
   const [exportQuality, setExportQuality] = useState(defaultExportQuality);
   const [exportPreserveExif, setExportPreserveExif] = useState(preserveExif);
   const [exportApplyPreset, setExportApplyPreset] = useState(true);
-  const [exportApplyCrop, setExportApplyCrop] = useState(true);
-  const [exportApplyRotationFlip, setExportApplyRotationFlip] = useState(true);
+
   const [exportNamingTemplate, setExportNamingTemplate] = useState('{filename}');
   const [exportResultPath, setExportResultPath] = useState<string | null>(null);
 
-  const NAMING_PRESETS = [
-    { value: '{filename}', labelKey: 'export.namingPresetFilename' },
-    { value: '{date}_{filename}', labelKey: 'export.namingPresetDateFilename' },
-    { value: '{camera}_{filename}', labelKey: 'export.namingPresetCameraFilename' },
-    { value: '{filename}_{preset}', labelKey: 'export.namingPresetFilenamePreset' },
-    { value: '{year}-{month}-{day}_{filename}', labelKey: 'export.namingPresetFullDateFilename' },
-  ];
 
   const previewNamingTemplate = (template: string): string => {
     const appliedPreset = photo.presetApplied ? presets.find(p => p.id === photo.presetApplied) : null;
@@ -630,8 +623,8 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
         outputPath: result.filePath,
         format: exportFormat,
         quality: exportQuality,
-        applyCrop: exportApplyCrop,
-        applyRotationFlip: exportApplyRotationFlip,
+        applyCrop: true,
+        applyRotationFlip: true,
         applyPreset: exportApplyPreset,
         preserveExif: exportPreserveExif,
         colorSpace,
@@ -733,13 +726,8 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
             onMouseLeave={e => { if (!photo.flipV) e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="flipV" size={16} color={photo.flipV ? t.accent : t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>{tr('detail.flipV')}</span></button>
           <button style={s(t).actionLabelBtn} onClick={handleRotate} title={tr('detail.rotate')}
-            onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
             onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
           ><AppIcon name="rotate" size={16} color={t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>{tr('detail.rotate')}</span></button>
-          <button style={s(t).actionLabelBtn} onClick={resetView} title={tr('detail.resetView')}
-            onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = t.bgSecondary; }}
-          ><AppIcon name="maximize" size={16} color={t.textPrimary} /><span style={{ fontSize: TYPO.tiny.size, marginLeft: 4 }}>1:1</span></button>
           </div>
           {cropMode ? (
             <>
@@ -1059,29 +1047,6 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
                   onUpdatePhoto={onUpdatePhoto}
                   theme={t}
                 />
-                <div style={s(t).surfaceSection}>
-                  <div style={s(t).sectionTitle}>
-                    {tr('detail.transform')}
-                  </div>
-                  <div style={{ display: 'flex', gap: SPACING.sm, flexWrap: 'wrap' }}>
-                    <button style={s(t).actionBtn} onClick={handleFlipH}
-                      onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                    >{tr('detail.flipH')}</button>
-                    <button style={s(t).actionBtn} onClick={handleFlipV}
-                      onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                    >{tr('detail.flipV')}</button>
-                    <button style={s(t).actionBtn} onClick={handleRotate}
-                      onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                    >{tr('detail.rotate')}</button>
-                    <button style={s(t).actionBtn} onClick={enterCropMode}
-                      onMouseEnter={e => { e.currentTarget.style.background = t.bgHover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; }}
-                    >{tr('detail.crop')}</button>
-                  </div>
-                </div>
                 {appliedPreset ? (
                   <div style={s(t).surfaceSection}>
                     <div style={{ fontSize: TYPO.small.size, color: t.textSecondary, marginBottom: SPACING.sm }}>
@@ -1134,59 +1099,16 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
                 </div>
                 <div style={s(t).surfaceSection}>
                   <label style={s(t).label}>{tr('export.namingTemplate')}</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACING.sm }}>
-                    {NAMING_PRESETS.map(p => {
-                      const isActive = exportNamingTemplate === p.value;
-                      return (
-                        <button key={p.value}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: SPACING.xs,
-                            padding: SPACING.md + "px " + SPACING.sm + "px",
-                            borderRadius: RADIUS.md,
-                            border: "1.5px solid " + (isActive ? t.accent : t.borderLight),
-                            background: isActive ? t.accentBg : t.bgPrimary,
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            transition: TRANSITION.all,
-                            boxSizing: 'border-box',
-                            outline: 'none',
-                            minHeight: 46,
-                          }}
-                          onClick={() => setExportNamingTemplate(p.value)}
-                          onMouseEnter={e => {
-                            if (!isActive) {
-                              e.currentTarget.style.borderColor = t.accent;
-                              e.currentTarget.style.background = t.bgHover;
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            if (!isActive) {
-                              e.currentTarget.style.borderColor = t.borderLight;
-                              e.currentTarget.style.background = t.bgPrimary;
-                            }
-                          }}
-                        >
-                          <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: TYPO.small.size, fontWeight: isActive ? 600 : 400, color: isActive ? t.accent : t.textPrimary, lineHeight: 1.3, textAlign: 'center' }}>{p.value}</span>
-                          <span style={{ fontSize: TYPO.tiny.size, fontWeight: 400, color: isActive ? t.accent : t.textTertiary, lineHeight: 1.3, textAlign: 'center' }}>{tr(p.labelKey)}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <NamingTemplateDropdown theme={t} value={exportNamingTemplate} onChange={setExportNamingTemplate} tr={tr} />
                   <div style={{ fontSize: TYPO.tiny.size, color: t.textTertiary, marginTop: SPACING.sm }}>
                     {tr('export.namingPreview')}: <span style={{ fontFamily: 'monospace', color: t.textSecondary }}>{previewNamingTemplate(exportNamingTemplate)}.{exportFormat}</span>
                   </div>
                 </div>
                 <div style={s(t).surfaceSection}>
-                  <div style={s(t).sectionTitle}>{tr('detail.exportOptions')}</div>
                   <div style={s(t).checkboxGroup}>
                   <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportPreserveExif} onChange={e => setExportPreserveExif(e.target.checked)} />{tr('detail.preservedExif')}</label>
                   <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportApplyPreset} onChange={e => setExportApplyPreset(e.target.checked)} />{tr('detail.applyPresetSettings')}</label>
-                  <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportApplyCrop} onChange={e => setExportApplyCrop(e.target.checked)} />{tr('detail.applyCrop')}</label>
-                  <label style={s(t).checkboxLabel}><input type="checkbox" checked={exportApplyRotationFlip} onChange={e => setExportApplyRotationFlip(e.target.checked)} />{tr('detail.applyRotationFlip')}</label>
+
                 </div>
                 </div>
                 <button style={s(t).exportBtn} onClick={handleExport}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { FilterCriteria, PhotoFile, ImportBatch } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION, SHADOW } from '../styles/theme';
 import { COLOR_LABEL_COLORS } from '../../shared/constants';
@@ -49,6 +49,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, filter, photos, onF
       ) as Record<string, number>,
     };
   }, [photos]);
+
+  // Clear selectedBatchId when the batch is removed from recentImports
+  useEffect(() => {
+    if (selectedBatchId && !recentImports.some(b => b.id === selectedBatchId)) {
+      setSelectedBatchId(null);
+    }
+  }, [selectedBatchId, recentImports]);
 
   const labelNames: Record<string, string> = {
     red: tr('sidebar.labelRed'),
@@ -266,7 +273,7 @@ const styles = {
     justifyContent: 'center',
     borderRadius: 14,
     border: 'none',
-    background: active ? t.accentBg : t.bgSecondary,
+    background: active ? t.selectedBg : t.bgSecondary,
     cursor: 'pointer',
     boxShadow: 'none',
     transition: TRANSITION.all,
@@ -313,7 +320,7 @@ const styles = {
     padding: `${SPACING.md}px ${SPACING.lg}px`,
     borderRadius: 16,
     border: 'none',
-    background: active ? t.accentBg : t.bgSecondary,
+    background: active ? t.selectedBg : t.bgSecondary,
     cursor: 'pointer',
     boxShadow: 'none',
     transition: TRANSITION.all,
@@ -409,10 +416,9 @@ const styles = {
     justifyContent: 'space-between',
     width: '100%',
     padding: '6px 10px',
-    borderRadius: 10,
+    borderRadius: 8,
     border: 'none',
-    background: active ? t.accentBg : 'transparent',
-    boxShadow: active ? `inset 3px 0 0 0 ${t.accent}` : 'none',
+    background: active ? t.accentLight : t.bgSecondary,
     color: active ? t.accent : t.textSecondary,
     cursor: 'pointer',
     textAlign: 'left',

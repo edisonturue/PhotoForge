@@ -205,13 +205,6 @@ function registerIpcHandlers(): void {
     const result = await importer.importFiles(options, (progress) => {
       mainWindow?.webContents.send(IPC.IMPORT_PROGRESS, progress);
     });
-    // Record this import batch for "Recent Imports" feature
-    if (result.imported > 0) {
-      const mode = options.copyToLibrary ? 'copy' : 'reference';
-      const recentPhotos = store.getAllPhotos().slice(0, result.imported);
-      const photoIds = recentPhotos.map(p => p.id);
-      store.recordImportBatch(photoIds, mode);
-    }
     return result;
   });
 
