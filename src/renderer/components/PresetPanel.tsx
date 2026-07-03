@@ -56,7 +56,7 @@ const ADJ_LABELS: { key: NumericAdjustmentKey; zh: string; en: string; unit: str
 
 type PanelView = 'presets' | 'import-menu' | 'import-result' | 'detail';
 
-export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, selectedCount = 0, onApplyPreset, onRemovePreset, onBatchApply, onClose, onCreatePreset, onDeletePreset, onRefreshPresets, theme: t }) => {
+const PresetPanelInner: React.FC<PresetPanelProps> = ({ presets, activePhoto, selectedCount = 0, onApplyPreset, onRemovePreset, onBatchApply, onClose, onCreatePreset, onDeletePreset, onRefreshPresets, theme: t }) => {
   const { t: tr, lang } = useI18n();
   const [activeCategory, setActiveCategory] = useState<PresetCategory>('classic');
   const [showCreate, setShowCreate] = useState(false);
@@ -514,6 +514,8 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
     </div>
   );
 };
+
+export const PresetPanel = React.memo(PresetPanelInner) as unknown as React.FC<PresetPanelProps>;
 
 const s = (t: Theme): Record<string, React.CSSProperties> => ({
   panel: { width: 328, margin: `${SPACING.lg}px ${SPACING.md}px ${SPACING.lg}px 0`, background: t.panelBg, borderRadius: 18, display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden', boxShadow: '0 18px 40px rgba(0,0,0,0.28)' },

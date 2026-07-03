@@ -20,6 +20,8 @@ export class PhotoStore {
   private recentImports: ImportBatch[] = [];
   private libraryPath: string;
   private settings: AppSettings;
+  private _saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private _saveDirty: boolean = false;
 
   constructor(libraryPath: string) {
     this.libraryPath = libraryPath;
@@ -146,8 +148,36 @@ export class PhotoStore {
   }
 
   save(): void {
-    const data = { photos: Array.from(this.photos.values()), version: 2 };
-    fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
+    try {
+      const data = { photos: Array.from(this.photos.values()), version: 2 };
+      fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
+    } catch (e) {
+      console.error('PhotoStore.save failed:', e);
+    }
+    this._saveDirty = false;
+  }
+
+  /** Debounced save: batches rapid updates into a single disk write. */
+  private saveDebounced(): void {
+    this._saveDirty = true;
+    if (this._saveTimer) return;
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      if (this._saveDirty) {
+        this.save();
+      }
+    }, 300);
+  }
+
+  /** Flush pending debounced save immediately. */
+  flushSave(): void {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    if (this._saveDirty) {
+      this.save();
+    }
   }
 
   // ===== Settings =====
@@ -205,7 +235,7 @@ export class PhotoStore {
     if (!photo) return false;
     Object.assign(photo, updates);
     this.photos.set(id, photo);
-    this.save();
+    this.saveDebounced();
     return true;
   }
 

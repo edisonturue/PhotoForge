@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { PresetAdjustment, PhotoFile, Preset, NumericAdjustmentKey } from '../../shared/types';
 import { Theme, SPACING, RADIUS, TYPO, DURATION, EASING, TRANSITION } from '../styles/theme';
 import { useI18n } from '../i18n';
@@ -36,38 +36,68 @@ const DEFAULT_ADJUSTMENT: PresetAdjustment = {
   highlights: 0, shadows: 0, whites: 0, blacks: 0, exposure: 0, gamma: 1.0,
 };
 
-export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, appliedPreset, onUpdatePhoto, theme: t }) => {
+const AdjustmentPanelInner: React.FC<AdjustmentPanelProps> = ({ photo, appliedPreset, onUpdatePhoto, theme: t }) => {
   const { t: tr, lang } = useI18n();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     light: true, color: true, detail: true, effects: true,
   });
 
-  const customAdj = photo.customAdjustments || {};
+  // Local drag state for responsive slider — updates instantly, no IPC
+  const [dragAdj, setDragAdj] = useState<Record<string, number> | null>(null);
+  const dragRef = useRef<Record<string, number>>({});
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const customAdjRef = useRef(photo.customAdjustments);
+  customAdjRef.current = photo.customAdjustments;
 
-  // Get current value: custom override > preset value > default
+  const customAdj = photo.customAdjustments || {};
+  const liveAdj = dragAdj ? { ...customAdj, ...dragAdj } : customAdj;
+
+  // Get current value: live override > preset value > default
   const getValue = useCallback((key: NumericAdjustmentKey): number => {
-    if (customAdj[key] !== undefined) return customAdj[key]!;
+    if (liveAdj[key] !== undefined) return liveAdj[key]!;
     if (appliedPreset) return appliedPreset.adjustments[key];
     return DEFAULT_ADJUSTMENT[key];
-  }, [customAdj, appliedPreset]);
+  }, [liveAdj, appliedPreset]);
 
   const handleChange = useCallback((key: NumericAdjustmentKey, value: number) => {
-    const newAdj = { ...customAdj, [key]: value };
-    // If value matches preset, remove custom override
-    if (appliedPreset && appliedPreset.adjustments[key] === value) {
-      delete newAdj[key];
-    }
-    // If all defaults, set to null
-    const isAllDefault = ADJUSTMENTS.every(a => {
-      const v = newAdj[a.key];
-      if (v === undefined) return true;
-      return a.key === 'gamma' ? v === 1.0 : v === 0;
-    });
-    onUpdatePhoto(photo.id, { customAdjustments: isAllDefault ? null : newAdj });
-  }, [photo.id, customAdj, appliedPreset, onUpdatePhoto]);
+    // Update local state immediately — instant visual feedback, no IPC
+    setDragAdj(prev => ({ ...(prev || {}), [key]: value }));
+    dragRef.current[key] = value;
+
+    // Debounce flush to parent (IPC + store)
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
+      const pending = dragRef.current;
+      dragRef.current = {};
+      setDragAdj(null);
+      if (Object.keys(pending).length === 0) return;
+      const base = customAdjRef.current || {};
+      const merged = { ...base, ...pending };
+      for (const k of Object.keys(merged)) {
+        const key = k as NumericAdjustmentKey;
+        if (appliedPreset && appliedPreset.adjustments[key] === merged[key]) {
+          delete merged[key];
+        }
+      }
+      const isAllDefault = ADJUSTMENTS.every(a => {
+        const v = merged[a.key];
+        if (v === undefined) return true;
+        return a.key === 'gamma' ? v === 1.0 : v === 0;
+      });
+      onUpdatePhoto(photo.id, { customAdjustments: isAllDefault ? null : merged });
+    }, 200);
+  }, [photo.id, appliedPreset, onUpdatePhoto]);
 
   const handleReset = useCallback((key: NumericAdjustmentKey) => {
-    const newAdj = { ...customAdj };
+    setDragAdj(prev => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return Object.keys(next).length > 0 ? next : null;
+    });
+    delete dragRef.current[key];
+    const newAdj = { ...customAdjRef.current };
     delete newAdj[key];
     const isAllDefault = ADJUSTMENTS.every(a => {
       const v = newAdj[a.key];
@@ -75,9 +105,13 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
       return a.key === 'gamma' ? v === 1.0 : v === 0;
     });
     onUpdatePhoto(photo.id, { customAdjustments: isAllDefault ? null : newAdj });
-  }, [photo.id, customAdj, onUpdatePhoto]);
+  }, [photo.id, onUpdatePhoto]);
 
   const handleResetAll = useCallback(() => {
+    setDragAdj(null);
+    dragRef.current = {};
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = null;
     onUpdatePhoto(photo.id, { customAdjustments: null });
   }, [photo.id, onUpdatePhoto]);
 
@@ -245,6 +279,8 @@ export const AdjustmentPanel: React.FC<AdjustmentPanelProps> = ({ photo, applied
     </div>
   );
 };
+
+export const AdjustmentPanel = React.memo(AdjustmentPanelInner) as unknown as React.FC<AdjustmentPanelProps>;
 
 // Helper: build CSS filter from combined preset + custom adjustments
 // MUST match CanvasRenderer buildFilterStyle exactly

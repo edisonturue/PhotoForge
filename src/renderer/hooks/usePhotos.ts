@@ -20,7 +20,13 @@ export function usePhotos() {
 
   const updatePhoto = useCallback(async (id: string, updates: Partial<PhotoFile>) => {
     await window.photoForge.updatePhotoMeta(id, updates);
-    setPhotos(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setPhotos(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next[idx] = { ...prev[idx], ...updates };
+      return next;
+    });
   }, []);
 
   const deletePhotosByIds = useCallback(async (ids: string[]) => {
