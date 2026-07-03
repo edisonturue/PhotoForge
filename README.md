@@ -109,7 +109,6 @@ npm run pack
 | **Webpack 5** | 构建工具 |
 | **sharp** | 高性能图像处理 |
 | **exifr** | EXIF 元数据解析 |
-| **Jest** | 单元测试 |
 
 ---
 
@@ -137,7 +136,6 @@ PhotoForge/
 │       ├── types.ts
 │       └── constants.ts
 ├── assets/           # 应用图标
-├── tests/            # 单元测试
 └── release/          # 构建输出
 ```
 

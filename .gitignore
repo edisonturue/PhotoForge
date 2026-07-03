@@ -73,3 +73,26 @@ deploy.sh
 assets/test_lens.png
 assets/icon.icns.bak
 assets/icon.png.bak
+
+# Internal development docs (not for public repo)
+CLAUDE.md
+AGENTS.md
+LESSONS.md
+PROJECT_LIFECYCLE.md
+scripts/
+
+# Internal dev docs (not for public repo)
+AI_COLLABORATION_GUIDE.md
+DEVELOPMENT_PLAN.md
+FIX_PLAN.md
+FIX_PLAN_V2.md
+SKILL_PLAN_requirements_expander.md
+AGENTS.md
+CLAUDE.md
+LESSONS.md
+PROJECT_LIFECYCLE.md
+scripts/
+
+# Test files (not for end users)
+tests/
+jest.config.js
