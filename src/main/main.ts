@@ -412,7 +412,7 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(IPC.REMOVE_PRESET, async (_, photoId: string): Promise<boolean> => {
-    return store.updatePhoto(photoId, { presetApplied: null });
+    return store.updatePhoto(photoId, { presetApplied: null, customAdjustments: null });
   });
 
   ipcMain.handle(IPC.CREATE_PRESET, async (_, preset: Preset): Promise<boolean> => {

@@ -784,7 +784,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: hasCrop ? 'hidden' : 'visible',
-                borderRadius: 14,
+                
               }}>
                 <div key={imageSrc} style={{ 
                   width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -796,7 +796,7 @@ export const PhotoDetail: React.FC<PhotoDetailProps> = ({ photo, allPhotos, onNa
                     maxWidth: '100%',
                     maxHeight: '100%',
                     objectFit: 'contain',
-                    borderRadius: 14,
+
                     transition: 'transform 0.05s ease-out',
                     userSelect: 'none',
                     transform: combinedTransform,

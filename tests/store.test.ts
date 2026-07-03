@@ -126,4 +126,47 @@ describe('PhotoStore', () => {
     expect(stats.totalPhotos).toBe(1);
     expect(typeof stats.librarySizeBytes).toBe('number');
   });
+
+  test('should clear applied preset and custom adjustments together', () => {
+    const photo = store.addPhoto({
+      fileName: 'preset-test.jpg',
+      filePath: '/tmp/preset-test.jpg',
+      fileFormat: 'JPEG',
+      fileSize: 4096,
+      width: 1200,
+      height: 800,
+      dateTaken: null,
+      dateModified: '2025-06-02T00:00:00.000Z',
+      cameraModel: null,
+      lensModel: null,
+      iso: null,
+      aperture: null,
+      shutterSpeed: null,
+      focalLength: null,
+      thumbnailPath: null,
+      rating: 0,
+      colorLabel: 'none',
+      tags: [],
+      presetApplied: 'classic-soft',
+      isFavorite: false,
+      isReferenced: false,
+      cropRegion: null,
+      flipH: false,
+      flipV: false,
+      rotation: 0,
+      customAdjustments: { brightness: 18, contrast: -6 },
+      editHistory: [],
+      title: '',
+      description: '',
+      latitude: null,
+      longitude: null,
+    });
+
+    const result = store.updatePhoto(photo.id, { presetApplied: null, customAdjustments: null });
+
+    expect(result).toBe(true);
+    const updated = store.getPhoto(photo.id);
+    expect(updated.presetApplied).toBeNull();
+    expect(updated.customAdjustments).toBeNull();
+  });
 });

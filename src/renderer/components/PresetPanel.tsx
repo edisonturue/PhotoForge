@@ -9,6 +9,7 @@ interface PresetPanelProps {
   activePhoto: PhotoFile | null;
   selectedCount?: number;
   onApplyPreset: (photoId: string, presetId: string) => void;
+  onRemovePreset: (photoId: string) => void;
   onBatchApply?: (presetId: string) => void;
   onClose: () => void;
   onCreatePreset: (preset: Preset) => Promise<boolean>;
@@ -55,7 +56,7 @@ const ADJ_LABELS: { key: NumericAdjustmentKey; zh: string; en: string; unit: str
 
 type PanelView = 'presets' | 'import-menu' | 'import-result' | 'detail';
 
-export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, selectedCount = 0, onApplyPreset, onBatchApply, onClose, onCreatePreset, onDeletePreset, onRefreshPresets, theme: t }) => {
+export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, selectedCount = 0, onApplyPreset, onRemovePreset, onBatchApply, onClose, onCreatePreset, onDeletePreset, onRefreshPresets, theme: t }) => {
   const { t: tr, lang } = useI18n();
   const [activeCategory, setActiveCategory] = useState<PresetCategory>('classic');
   const [showCreate, setShowCreate] = useState(false);
@@ -79,6 +80,9 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
     } catch { return new Set(); }
   });
   const [hoveredPresetId, setHoveredPresetId] = useState<string | null>(null);
+
+  // 来源: App -> usePhotos -> main IPC, used to reflect the selected photo's real applied preset.
+  const appliedPreset = activePhoto?.presetApplied ? presets.find(p => p.id === activePhoto.presetApplied) || null : null;
 
   const togglePresetFavorite = (id: string) => {
     setFavoriteIds(prev => {
@@ -373,6 +377,30 @@ export const PresetPanel: React.FC<PresetPanelProps> = ({ presets, activePhoto, 
         </div>
       </div>
 
+      {activePhoto && appliedPreset && (
+        <div style={s(t).appliedPresetWrap}>
+          <div style={s(t).appliedPresetBar}>
+            <div style={s(t).appliedPresetInfo}>
+              <span style={s(t).appliedPresetLabel}>{tr('presets.currentPreset')}</span>
+              <span style={s(t).appliedPresetName}><AppIcon name="sparkles" size={12} color={t.accent} />{appliedPreset.name}</span>
+            </div>
+            <button
+              style={s(t).removePresetBtn}
+              onClick={() => onRemovePreset(activePhoto.id)}
+              onMouseEnter={e => { e.currentTarget.style.background = t.dangerLight; e.currentTarget.style.borderColor = t.danger; }}
+              onMouseLeave={e => { e.currentTarget.style.background = t.bgCard; e.currentTarget.style.borderColor = t.border; }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onFocus={e => { e.currentTarget.style.boxShadow = SHADOW.focus; }}
+              onBlur={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
+              title={tr('presets.removeApplied')}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}><AppIcon name="x" size={12} color={t.danger} />{tr('presets.removeApplied')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Category tabs + Favorites toggle */}
       <div style={s(t).catTabs}>
         <button style={{
@@ -496,6 +524,25 @@ const s = (t: Theme): Record<string, React.CSSProperties> => ({
   backArrowBtn: { width: 30, height: 30, border: 'none', borderRadius: 12, background: t.bgSecondary, color: t.textSecondary, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: TRANSITION.all, boxShadow: 'none' } as React.CSSProperties,
   catTabs: { display: 'flex', flexWrap: 'wrap', gap: SPACING.xs, padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px`, background: t.bgSecondary },
   catBtn: { padding: `5px ${SPACING.sm}px`, border: 'none', borderRadius: 999, fontSize: TYPO.tiny.size, cursor: 'pointer', whiteSpace: 'nowrap', transition: TRANSITION.all },
+  appliedPresetWrap: { padding: `0 ${SPACING.md}px ${SPACING.sm}px`, background: t.panelBg },
+  appliedPresetBar: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm,
+    padding: `${SPACING.sm}px ${SPACING.md}px`, background: t.accentLight,
+    border: `1px solid ${t.borderLight}`, borderRadius: RADIUS.md, transition: TRANSITION.all,
+  },
+  appliedPresetInfo: { display: 'flex', flexDirection: 'column', gap: SPACING.xs, minWidth: 0 },
+  appliedPresetLabel: { fontSize: TYPO.tiny.size, color: t.textTertiary, fontWeight: TYPO.tiny.weight },
+  appliedPresetName: {
+    display: 'inline-flex', alignItems: 'center', gap: SPACING.xs, minWidth: 0,
+    color: t.accent, fontSize: TYPO.small.size, fontWeight: 600,
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  },
+  removePresetBtn: {
+    flexShrink: 0, minHeight: 28, padding: `${SPACING.xs}px ${SPACING.sm}px`,
+    border: `1px solid ${t.border}`, borderRadius: RADIUS.sm, background: t.bgCard,
+    color: t.danger, cursor: 'pointer', fontSize: TYPO.tiny.size, fontWeight: 600,
+    transition: TRANSITION.all, outline: 'none',
+  },
   presetList: { flex: 1, overflowY: 'auto', padding: `${SPACING.sm}px ${SPACING.md}px ${SPACING.md}px` },
   presetCard: {
     display: 'flex', alignItems: 'center', gap: SPACING.sm, background: t.bgCard,

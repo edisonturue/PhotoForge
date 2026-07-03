@@ -243,6 +243,7 @@ export const App: React.FC = () => {
   useEffect(() => { photosRef.current = photos; });
 
   const activePhoto = photos.find(p => p.id === activePhotoId) || null;
+  const presetPanelPhoto = selectedIds.size === 1 ? photos.find(p => p.id === Array.from(selectedIds)[0]) || null : null;
 
   useEffect(() => {
     (async () => {
@@ -1009,9 +1010,10 @@ export const App: React.FC = () => {
         {activeModule === 'presets' && (
           <PresetPanel
             presets={presets}
-            activePhoto={null}
+            activePhoto={presetPanelPhoto}
             selectedCount={selectedIds.size}
             onApplyPreset={handleApplyPreset}
+            onRemovePreset={handleRemovePreset}
             onBatchApply={handleBatchApplyPreset}
             onClose={() => cbRef.current.setActiveModule('browse')}
             onCreatePreset={createPreset}
