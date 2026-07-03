@@ -73,6 +73,7 @@ contextBridge.exposeInMainWorld('photoForge', {
   windowMinimize: () => ipcRenderer.invoke(IPC.WINDOW_MINIMIZE),
   windowToggleMaximize: () => ipcRenderer.invoke(IPC.WINDOW_TOGGLE_MAXIMIZE),
   windowClose: () => ipcRenderer.invoke(IPC.WINDOW_CLOSE),
+  uninstallApp: () => ipcRenderer.invoke(IPC.APP_UNINSTALL),
 
   // Missing references check
   checkMissingReferences: () => ipcRenderer.invoke(IPC.MISSING_REFERENCES_CHECK),
@@ -130,7 +131,7 @@ declare global {
       exportBatch: (photoIds: string[], outputDir: string, namingTemplate?: string) => Promise<any>;
       getLibraryPath: () => Promise<string>;
       getStorageStats: () => Promise<any>;
-      openExternal: (url: string) => Promise<void>;
+      openExternal: (url: string) => Promise<boolean>;
       getSettings: () => Promise<AppSettings>;
       updateSettings: (updates: Partial<AppSettings>) => Promise<AppSettings>;
       checkMissingReferences: () => Promise<Array<{ id: string; fileName: string; filePath: string }>>;
@@ -143,6 +144,7 @@ declare global {
       windowMinimize: () => Promise<boolean>;
       windowToggleMaximize: () => Promise<boolean>;
       windowClose: () => Promise<boolean>;
+  uninstallApp: () => Promise<{ success: boolean; cancelled?: boolean }>;
       onMissingReferences: (callback: (missing: Array<{ id: string; fileName: string; filePath: string }>) => void) => () => void;
       onRestartRequired: (callback: (newPath: string) => void) => () => void;
       logWrite: (level: string, module: string, msg: string, data?: any) => Promise<void>;

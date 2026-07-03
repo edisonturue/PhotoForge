@@ -72,6 +72,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
  
 
 
+ const handleUninstall = async () => {
+  try {
+   await window.photoForge.uninstallApp();
+  } catch (e) {
+   console.error('Uninstall failed:', e);
+  }
+ };
  const handleClearLibrary = async () => {
   if (!confirm(tr('settings.clearLibraryConfirm'))) return;
   setClearing(true);
@@ -405,12 +412,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack, onSettingsCh
           {tr('settings.aboutFeatures2')}<br /><br />
           {tr('settings.aboutLicense')}<br />
          </div>
-         <button style={styles.aboutBtn(t)} onClick={() => window.photoForge.openExternal('https://github.com/photoforge')}>
+         <button style={styles.aboutBtn(t)} onClick={() => window.photoForge.openExternal('https://github.com/edisonturue/PhotoForge')}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACING.xs }}>
            <AppIcon name="globe" size={14} color={t.accent} />
            GitHub
           </span>
          </button>
+         <div style={{ height: 1, background: t.border, margin: `${SPACING.xl}px 0`, width: '60%' }} />
+         <div style={{ marginTop: SPACING.sm, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: SPACING.md }}>
+          <button style={{
+            padding: `${SPACING.sm}px ${SPACING.xl}px`, borderRadius: 12,
+            background: t.danger, color: '#fff', cursor: 'pointer',
+            fontSize: TYPO.body.size, fontWeight: 600, border: 'none',
+            transition: 'all 0.15s ease',
+          }}
+            onClick={handleUninstall}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+          >{tr('settings.uninstall')}</button>
+         </div>
         </div>
        </SettingsPanel>
       </div>

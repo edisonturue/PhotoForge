@@ -471,8 +471,17 @@ function registerIpcHandlers(): void {
   });
 
   // Shell
-  ipcMain.handle(IPC.OPEN_EXTERNAL, async (_, url: string) => {
-    shell.openExternal(url);
+  ipcMain.handle(IPC.OPEN_EXTERNAL, async (_, url: string): Promise<boolean> => {
+    // Use macOS 'open' command instead of Electron's shell.openExternal
+    // because ad-hoc signed apps on macOS 15+ may have URL-opening restricted.
+    const { execFileSync } = require('child_process');
+    try {
+      execFileSync('open', [url], { stdio: 'ignore', timeout: 10000 });
+      return true;
+    } catch (e: any) {
+      logger.module('main').error('openExternal failed', { url, error: e.message });
+      return false;
+    }
   });
 
   // Settings — update exportManager when maxProcessMemory changes
@@ -518,6 +527,61 @@ function registerIpcHandlers(): void {
     if (!target) return false;
     target.close();
     return true;
+  });
+
+  // ===== Uninstall =====
+  ipcMain.handle(IPC.APP_UNINSTALL, async (): Promise<{ success: boolean; cancelled?: boolean }> => {
+    const libPath = store.getLibraryPath();
+    const supportPath = path.join(app.getPath('appData'), 'PhotoForge');
+
+    const result = await dialog.showMessageBox(mainWindow!, {
+      type: 'warning',
+      message: '卸载 PhotoForge',
+      detail: '仅删除应用：应用本身会被移除，照片库和相关数据保留。\n删除管理文件：照片库中的副本数据和配置会被删除，引用模式的原文件不受影响。',
+      buttons: [
+        '仅删除应用',
+        '删除应用及管理文件',
+        '取消',
+      ],
+      defaultId: 2,
+      cancelId: 2,
+    });
+
+    if (result.response === 2) return { success: false, cancelled: true };
+    const removeData = result.response === 1;
+
+    if (removeData) {
+      // Delete library directory — this removes copy-mode originals + metadata
+      // Referenced originals live outside library path, so they're safe
+      logger.module('main').info('Uninstall: removing library', { libPath });
+      try { fs.rmSync(libPath, { recursive: true, force: true }); } catch (e: any) {
+        logger.module('main').warn('Uninstall: failed to remove library', { error: e.message });
+      }
+      // Delete Application Support
+      logger.module('main').info('Uninstall: removing support dir', { supportPath });
+      try { fs.rmSync(supportPath, { recursive: true, force: true }); } catch (e: any) {
+        logger.module('main').warn('Uninstall: failed to remove support dir', { error: e.message });
+      }
+    }
+
+        // Move .app to Trash via Finder (one-line osascript, no saved script)
+    const { execSync } = require('child_process');
+    // Resolve .app bundle path from executable path
+    let appBundle = process.execPath;
+    while (appBundle && path.extname(appBundle) !== '.app') {
+      const parent = path.dirname(appBundle);
+      if (parent === appBundle) break;
+      appBundle = parent;
+    }
+    if (path.extname(appBundle) === '.app') {
+      try {
+        const cmd = 'osascript -e ' + JSON.stringify('tell application "Finder" to delete POSIX file "' + appBundle + '"');
+        execSync(cmd + ' 2>/dev/null || true', { stdio: 'ignore', timeout: 10000 });
+      } catch {}
+    }
+    // Quit
+    setImmediate(() => app.quit());
+    return { success: true };
   });
 
   // ===== Collections =====

@@ -49,6 +49,7 @@ declare global {
       windowMinimize: () => Promise<boolean>;
       windowToggleMaximize: () => Promise<boolean>;
       windowClose: () => Promise<boolean>;
+  uninstallApp: () => Promise<{ success: boolean; cancelled?: boolean }>;
       logWrite: (level: string, module: string, msg: string, data?: any) => Promise<void>;
       logRead: (date?: string, filter?: { level?: string; module?: string; search?: string }, limit?: number) => Promise<any[]>;
       logDates: () => Promise<string[]>;

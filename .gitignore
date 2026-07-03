@@ -18,18 +18,16 @@ Thumbs.db
 *.swp
 *.swo
 
-# ---------- 隐私安全：个人工作流文件（不上传 GitHub） ----------
-# AI 个人指令（含本地路径/偏好/工作流）
+# Personal AI / dev workflow docs (not for public repo)
+AGENTS.md
 CLAUDE.md
 AI_COLLABORATION_GUIDE.md
-AGENTS.md
-
-# 已废弃的内部开发计划
 DEVELOPMENT_PLAN.md
 FIX_PLAN.md
 FIX_PLAN_V2.md
 SKILL_PLAN_requirements_expander.md
-# -------------------------------------------------------------
+LESSONS.md
+PROJECT_LIFECYCLE.md
 
 # Project temp / generated assets
 tmp-*/
@@ -54,13 +52,6 @@ ui-references/
 ui_references/
 tmp-ui-baseline/
 
-# Docs (auto-generated or external references)
-docs/
-deep-think-skill/
-
-# Local CI / deploy scripts
-deploy.sh
-
 # Codex agent workspace
 .codex/
 .codex-artifacts/
@@ -74,25 +65,9 @@ assets/test_lens.png
 assets/icon.icns.bak
 assets/icon.png.bak
 
-# Internal development docs (not for public repo)
-CLAUDE.md
-AGENTS.md
-LESSONS.md
-PROJECT_LIFECYCLE.md
-scripts/
+# Local CI / deploy scripts
+deploy.sh
 
-# Internal dev docs (not for public repo)
-AI_COLLABORATION_GUIDE.md
-DEVELOPMENT_PLAN.md
-FIX_PLAN.md
-FIX_PLAN_V2.md
-SKILL_PLAN_requirements_expander.md
-AGENTS.md
-CLAUDE.md
-LESSONS.md
-PROJECT_LIFECYCLE.md
-scripts/
-
-# Test files (not for end users)
-tests/
-jest.config.js
+# Misc
+docs/
+deep-think-skill/
